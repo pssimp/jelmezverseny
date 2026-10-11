@@ -485,23 +485,33 @@ const COSTUMES = [
             const costumeVotes = userVotes[costumeId] || {};
 
             CATEGories.forEach(cat => {
-                const val = costumeVotes[cat.id] || 5;
+                const val = costumeVotes[cat.id] || 5; // Alapértelmezett 5, ha még nincs szavazat
 
                 const div = document.createElement('div');
                 div.className = 'bg-slate-50 p-4 rounded-xl border border-slate-200';
+                
+                // Rádiógombok generálása 1-től 10-ig
+                let radioButtonsHTML = '';
+                for (let i = 1; i <= 10; i++) {
+                    const isChecked = (val === i) ? 'checked' : '';
+                    radioButtonsHTML += `
+                        <label class="flex flex-col items-center cursor-pointer group">
+                            <span class="text-xs font-semibold text-slate-500 mb-1 group-hover:text-corporateBlue">${i}</span>
+                            <input type="radio" name="cat-${cat.id}" value="${i}" ${isChecked}
+                                onchange="updateScore('${costumeId}', '${cat.id}', ${i})"
+                                class="w-4 h-4 text-accentOrange accent-accentOrange cursor-pointer">
+                        </label>
+                    `;
+                }
+
                 div.innerHTML = `
-                    <div class="flex justify-between items-center mb-2">
-                        <label class="font-semibold text-sm text-slate-700">${cat.name}</label>
-                        <div class="flex items-center space-x-1">
-                            <input type="number" min="1" max="10" value="${val}" id="input-${cat.id}" 
-                                oninput="updateScore('${costumeId}', '${cat.id}', this.value, 'number')"
-                                class="w-14 text-center bg-white border border-slate-300 rounded-lg py-1 font-bold text-corporateBlue text-sm focus:outline-none focus:ring-2 focus:ring-corporateBlue">
-                            <span class="text-xs text-slate-400 font-medium">/10</span>
-                        </div>
+                    <div class="flex justify-between items-center mb-3">
+                        <label class="font-semibold text-sm text-corporateBlue">${cat.name}</label>
+                        <span class="text-xs font-bold bg-blue-50 text-corporateBlue px-2.5 py-1 rounded-lg border border-blue-100">Kiválasztva: <span id="val-label-${cat.id}">${val}</span>/10</span>
                     </div>
-                    <input type="range" min="1" max="10" value="${val}" id="range-${cat.id}"
-                        oninput="updateScore('${costumeId}', '${cat.id}', this.value, 'range')"
-                        class="w-full accent-accentOrange cursor-pointer">
+                    <div class="flex justify-between items-center bg-white p-3 rounded-xl border border-slate-200 gap-1">
+                        ${radioButtonsHTML}
+                    </div>
                 `;
                 container.appendChild(div);
             });
