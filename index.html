@@ -517,26 +517,21 @@ const COSTUMES = [
             });
         }
 
-        function updateScore(costumeId, categoryId, value, source) {
+        function updateScore(costumeId, categoryId, value) {
             let numVal = parseInt(value, 10);
             if (isNaN(numVal)) numVal = 1;
-            if (numVal < 1) numVal = 1;
-            if (numVal > 10) numVal = 10;
 
-            // Sync inputs
-            if (source === 'range') {
-                document.getElementById(`input-${categoryId}`).value = numVal;
-            } else {
-                document.getElementById(`range-${categoryId}`).value = numVal;
-            }
+            // Kijelzett érték frissítése az adott kategória mellett
+            const labelEl = document.getElementById(`val-label-${categoryId}`);
+            if (labelEl) labelEl.textContent = numVal;
 
-            // Save in state
+            // Mentés az állapotba
             if (!votes[currentUser]) votes[currentUser] = {};
             if (!votes[currentUser][costumeId]) votes[currentUser][costumeId] = {};
             
             votes[currentUser][costumeId][categoryId] = numVal;
 
-            // Calculate overall average for costume by user
+            // Összesített átlag számítása a jelmezhez az adott felhasználónál
             let sum = 0;
             CATEGories.forEach(cat => {
                 sum += (votes[currentUser][costumeId][cat.id] || 5);
@@ -545,7 +540,7 @@ const COSTUMES = [
 
             localStorage.setItem('costume_contest_votes', JSON.stringify(votes));
 
-            // Show save status flash
+            // Mentési státusz visszajelzés
             const status = document.getElementById('save-status');
             status.style.opacity = '1';
             setTimeout(() => { status.style.opacity = '0'; }, 1500);
