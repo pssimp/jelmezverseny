@@ -450,7 +450,7 @@ const COSTUMES = [
 
                 card.innerHTML = `
                     <div class="relative bg-slate-900 h-56 flex items-center justify-center overflow-hidden">
-                        <img src="${c.image}" alt="${c.title}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" onerror="this.src='https://placehold.co/600x400/1E3A8A/FFFFFF?text=Jelmez'">
+                        <img src="${c.image}" alt="${c.title}" class="w-full h-full object-contain p-2 group-hover:scale-105 transition duration-300" onerror="this.src='https://placehold.co/600x400/1E3A8A/FFFFFF?text=Jelmez'">
                         ${isRated ? '<div class="absolute top-3 right-3 bg-emerald-500 text-white p-1.5 rounded-full shadow text-xs"><i class="fa-solid fa-check"></i></div>' : ''}
                     </div>
                     <div class="p-4 flex flex-col justify-between flex-1">
