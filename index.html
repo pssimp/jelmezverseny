@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html lang="hu" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Céges Jelmezverseny - Szavazás & Eredmények</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        corporateBlue: '#1E3A8A',
+                        accentOrange: '#F97316',
+                        softBackground: '#F8FAFC'
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Chart.js for Slide 3 graphs -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
+</head>
+<body class="h-full bg-softBackground text-slate-800 flex flex-col">
+
+    <!-- Navigation Bar -->
+    <header class="bg-corporateBlue text-white shadow-md sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
+            <div class="flex items-center space-x-3 cursor-pointer" onclick="router.navigate('home')">
+                <div class="bg-accentOrange p-2 rounded-lg text-white font-bold flex items-center justify-center shadow">
+                    <i class="fa-solid fa-masks-theater text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg leading-tight tracking-wide">Céges Jelmezverseny</h1>
+                    <p class="text-xs text-slate-300">Hivatalos Szavazó & Prezentációs Portál</p>
+                </div>
+            </div>
+            
+            <div class="flex items-center space-x-4">
+                <div id="user-badge" class="hidden items-center space-x-2 bg-blue-900/60 px-3 py-1.5 rounded-full border border-blue-700/50 text-sm">
+                    <i class="fa-solid fa-user-tie text-accentOrange"></i>
+                    <span id="current-username" class="font-medium text-slate-100"></span>
+                    <button onclick="logout()" class="text-xs text-slate-400 hover:text-white ml-2 transition" title="Kijelentkezés">
+                        <i class="fa-solid fa-right-from-bracket"></i>
+                    </button>
+                </div>
+                
+                <button onclick="router.navigate('presentation')" class="bg-accentOrange hover:bg-orange-600 text-white px-4 py-2 rounded-lg text-sm font-semibold transition shadow flex items-center space-x-2">
+                    <i class="fa-solid fa-chart-pie"></i>
+                    <span>Eredmények / Prezentáció</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Container -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 flex flex-col">
+        
+        <!-- View 1: Login View -->
+        <section id="view-login" class="view hidden flex-1 flex items-center justify-center">
+            <div class="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full border border-slate-100 text-center">
+                <div class="w-16 h-16 bg-orange-100 text-accentOrange rounded-full flex items-center justify-center mx-auto mb-4 text-2xl shadow-inner">
+                    <i class="fa-solid fa-id-badge"></i>
+                </div>
+                <h2 class="text-2xl font-bold text-corporateBlue mb-2">Üdvözöljük a Zsűriben!</h2>
+                <p class="text-sm text-slate-500 mb-6">Kérjük, adja meg a nevét a szavazás megkezdéséhez. A rendszer megjegyzi az Ön beállításait.</p>
+                
+                <form onsubmit="handleLogin(event)" class="space-y-4 text-left">
+                    <div>
+                        <label class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1">Az Ön Neve / Zsűritag Neve</label>
+                        <div class="relative">
+                            <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                                <i class="fa-solid fa-user"></i>
+                            </span>
+                            <input type="text" id="username-input" required placeholder="pl. Kovács Anna" 
+                                class="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-corporateBlue focus:bg-white text-slate-800 transition">
+                        </div>
+                    </div>
+                    <button type="submit" class="w-full bg-corporateBlue hover:bg-blue-900 text-white font-semibold py-3 px-4 rounded-xl shadow-lg transition duration-200 flex items-center justify-center space-x-2">
+                        <span>Szavazás Indítása</span>
+                        <i class="fa-solid fa-arrow-right"></i>
+                    </button>
+                </form>
+            </div>
+        </section>
+
+        <!-- View 2: Home Grid View -->
+        <section id="view-home" class="view hidden flex-1 flex flex-col">
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                    <h2 class="text-2xl font-bold text-corporateBlue">Jelmezek Galériája</h2>
+                    <p class="text-sm text-slate-500">Kattintson egy jelmezre a részletes értékeléshez és pontozáshoz.</p>
+                </div>
+                <div class="flex items-center space-x-3 text-sm">
+                    <div class="flex items-center space-x-1.5 bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-lg border border-emerald-200">
+                        <span class="w-3 h-3 rounded-full bg-emerald-500 inline-block"></span>
+                        <span id="rated-count" class="font-semibold">0</span><span>/</span><span id="total-count">0</span> <span>Értékelve</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Costumes Grid -->
+            <div id="costumes-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 pb-10">
+                <!-- Dynamically populated -->
+            </div>
+        </section>
+
+        <!-- View 3: Detail Rating View -->
+        <section id="view-detail" class="view hidden flex-1 flex flex-col">
+            <div class="mb-4">
+                <button onclick="router.navigate('home')" class="inline-flex items-center space-x-2 text-corporateBlue hover:text-blue-900 font-semibold bg-white px-4 py-2 rounded-xl shadow-sm border border-slate-200 transition">
+                    <i class="fa-solid fa-arrow-left"></i>
+                    <span>Vissza a főoldalra</span>
+                </button>
+            </div>
+
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden grid grid-cols-1 lg:grid-cols-12 flex-1">
+                <!-- Costume Image Column -->
+                <div class="lg:col-span-5 bg-slate-900 flex flex-col items-center justify-center p-6 relative">
+                    <img id="detail-image" src="" alt="Jelmez" class="max-h-[400px] w-auto object-contain rounded-xl shadow-lg border border-slate-700">
+                    <div class="mt-4 text-center">
+                        <span id="detail-filename" class="text-orange-400 font-mono text-sm bg-slate-800 px-3 py-1 rounded-full border border-slate-700"></span>
+                    </div>
+                </div>
+
+                <!-- Rating Form Column -->
+                <div class="lg:col-span-7 p-6 sm:p-8 flex flex-col justify-between">
+                    <div>
+                        <h3 class="text-xl font-bold text-corporateBlue mb-1">Jelmez Értékelése</h3>
+                        <p class="text-xs text-slate-500 mb-6">Pontozza a jelmezt 1-től 10-ig terjedő skálán az alábbi 5 kategóriában.</p>
+
+                        <div id="categories-container" class="space-y-5">
+                            <!-- Dynamic rating categories -->
+                        </div>
+                    </div>
+
+                    <div class="mt-8 pt-4 border-t border-slate-100 flex justify-between items-center">
+                        <span id="save-status" class="text-xs text-emerald-600 font-medium flex items-center space-x-1 opacity-0 transition-opacity">
+                            <i class="fa-solid fa-circle-check"></i>
+                            <span>Változások mentve</span>
+                        </span>
+                        <button onclick="router.navigate('home')" class="bg-corporateBlue hover:bg-blue-900 text-white font-semibold py-2.5 px-6 rounded-xl shadow transition">
+                            Kész / Vissza
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- View 4: Presentation & Results Dashboard View -->
+        <section id="view-presentation" class="view hidden flex-1 flex flex-col">
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                    <h2 class="text-2xl font-bold text-corporateBlue flex items-center space-x-2">
+                        <i class="fa-solid fa-chart-line text-accentOrange"></i>
+                        <span>Eredmények & Prezentációs Nézet</span>
+                    </h2>
+                    <p class="text-sm text-slate-500">Hivatalos statisztikai összegző és zsűri prezentáció (4 diá)</p>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <button onclick="exportDataJSON()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3.5 py-2 rounded-xl text-xs font-semibold transition border border-slate-200 flex items-center space-x-1.5">
+                        <i class="fa-solid fa-download"></i>
+                        <span>Adatok Letöltése (JSON)</span>
+                    </button>
+                    <label class="bg-corporateBlue hover:bg-blue-900 text-white px-3.5 py-2 rounded-xl text-xs font-semibold transition cursor-pointer flex items-center space-x-1.5 shadow">
+                        <i class="fa-solid fa-upload"></i>
+                        <span>Adatok Betöltése</span>
+                        <input type="file" id="import-file" accept=".json" onchange="importDataJSON(event)" class="hidden">
+                    </label>
+                </div>
+            </div>
+
+            <!-- Slide Container -->
+            <div class="bg-white rounded-2xl shadow-lg border border-slate-200 flex-1 flex flex-col overflow-hidden mb-6">
+                <!-- Slide Navigation Header -->
+                <div class="bg-slate-50 px-6 py-4 border-b border-slate-200 flex justify-between items-center">
+                    <div class="flex items-center space-x-2">
+                        <span id="slide-indicator" class="bg-accentOrange text-white text-xs font-bold px-3 py-1 rounded-full">1. Dia</span>
+                        <h3 id="slide-title" class="font-bold text-corporateBlue text-lg">Összesített Átlagpontszámok</h3>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <button onclick="prevSlide()" class="bg-white hover:bg-slate-100 text-slate-700 px-3 py-1.5 rounded-lg border border-slate-200 text-sm font-semibold transition shadow-sm">
+                            <i class="fa-solid fa-chevron-left mr-1">is</i> Előző
+                        </button>
+                        <button onclick="nextSlide()" class="bg-corporateBlue hover:bg-blue-900 text-white px-4 py-1.5 rounded-lg text-sm font-semibold transition shadow">
+                            Következő <i class="fa-solid fa-chevron-right ml-1"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Slide Content Area -->
+                <div class="p-6 sm:p-8 flex-1 overflow-y-auto">
+                    
+                    <!-- Slide 1: Averages Table -->
+                    <div id="slide-1" class="slide-content space-y-4">
+                        <p class="text-sm text-slate-500 mb-4">A versenyben induló jelmezek fájlnevei és az értékelési kategóriák átlagos pontszámai, valamint a végső szumma.</p>
+                        <div class="overflow-x-auto rounded-xl border border-slate-200 shadow-sm">
+                            <table class="w-full text-left border-collapse bg-white">
+                                <thead>
+                                    <tr class="bg-corporateBlue text-white text-xs uppercase tracking-wider">
+                                        <th class="p-3.5">Jelmez / Fájlnév</th>
+                                        <th class="p-3.5 text-center">Egyediség</th>
+                                        <th class="p-3.5 text-center">Komplexitás</th>
+                                        <th class="p-3.5 text-center">Kreativitás</th>
+                                        <th class="p-3.5 text-center">Kép Minőség</th>
+                                        <th class="p-3.5 text-center">Szórakoztató Érték</th>
+                                        <th class="p-3.5 text-center font-bold text-orange-300">Összesen (Szumma)</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="table-slide1-body" class="divide-y divide-slate-100 text-sm">
+                                    <!-- Populated via JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Slide 2: Jury Scores Matrix -->
+                    <div id="slide-2" class="slide-content hidden space-y-4">
+                        <p class="text-sm text-slate-500 mb-4">A szavazó zsűritagok által adott összesített pontszámok jelmezenként.</p>
+                        <div class="overflow-x-auto rounded-xl border border-slate-200 shadow-sm">
+                            <table class="w-full text-left border-collapse bg-white">
+                                <thead>
+                                    <tr id="table-slide2-header" class="bg-corporateBlue text-white text-xs uppercase tracking-wider">
+                                        <!-- Populated via JS -->
+                                    </tr>
+                                </thead>
+                                <tbody id="table-slide2-body" class="divide-y divide-slate-100 text-sm">
+                                    <!-- Populated via JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Slide 3: Charts & Graphs -->
+                    <div id="slide-3" class="slide-content hidden space-y-6">
+                        <p class="text-sm text-slate-500 mb-2">Vizuális elemzések és kategória-összehasonlítások a verseny állásáról.</p>
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col items-center">
+                                <h4 class="font-bold text-corporateBlue text-sm mb-3">Top Jelmezek Átlagpontszámai</h4>
+                                <div class="w-full h-72 relative">
+                                    <canvas id="chartAverageScores"></canvas>
+                                </div>
+                            </div>
+                            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col items-center">
+                                <h4 class="font-bold text-corporateBlue text-sm mb-3">Kategóriák Szerinti Átlagok</h4>
+                                <div class="w-full h-72 relative">
+                                    <canvas id="chartCategoryBreakdown"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Slide 4: Rankings & Summary -->
+                    <div id="slide-4" class="slide-content hidden space-y-6">
+                        <p class="text-sm text-slate-500 mb-4">A verseny végeredménye, kategóriagyőztesek és a zsűritagok személyes kedvencei.</p>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            <!-- Winner card -->
+                            <div class="bg-gradient-to-br from-blue-900 to-corporateBlue text-white p-5 rounded-2xl shadow-md flex flex-col justify-between">
+                                <div>
+                                    <div class="flex items-center space-x-2 text-accentOrange mb-2">
+                                        <i class="fa-solid fa-trophy text-xl"></i>
+                                        <span class="text-xs uppercase font-bold tracking-wider">Legnagyobb Átlagpont</span>
+                                    </div>
+                                    <h4 id="rank-top-costume" class="text-lg font-bold mb-1">Nincs adat</h4>
+                                    <p id="rank-top-score" class="text-2xl font-extrabold text-accentOrange">0.0 <span class="text-xs text-slate-300 font-normal">pont</span></p>
+                                </div>
+                                <div class="mt-4 pt-3 border-t border-blue-800 text-xs text-slate-300">
+                                    A legtöbb elégedettséget elért jelmez.
+                                </div>
+                            </div>
+
+                            <!-- Category winners -->
+                            <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                                <div>
+                                    <div class="flex items-center space-x-2 text-corporateBlue mb-2">
+                                        <i class="fa-solid fa-medal text-xl text-amber-500"></i>
+                                        <span class="text-xs uppercase font-bold tracking-wider">Kategória Győztesek</span>
+                                    </div>
+                                    <ul id="rank-category-winners" class="space-y-2 text-sm mt-3">
+                                        <!-- Populated via JS -->
+                                    </ul>
+                                </div>
+                            </div>
+
+                            <!-- Favorites by Jury -->
+                            <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between md:col-span-2 lg:col-span-1">
+                                <div>
+                                    <div class="flex items-center space-x-2 text-corporateBlue mb-2">
+                                        <i class="fa-solid fa-heart text-xl text-rose-500"></i>
+                                        <span class="text-xs uppercase font-bold tracking-wider">Zsűritagok Kedvencei</span>
+                                    </div>
+                                    <div id="rank-jury-favorites" class="space-y-2 text-sm mt-3 max-h-40 overflow-y-auto pr-1">
+                                        <!-- Populated via JS -->
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Slide Footer Dots -->
+                <div class="bg-slate-50 px-6 py-3 border-t border-slate-200 flex justify-center space-x-2">
+                    <button onclick="goToSlide(1)" class="slide-dot w-3 h-3 rounded-full bg-corporateBlue transition" title="1. Dia"></button>
+                    <button onclick="goToSlide(2)" class="slide-dot w-3 h-3 rounded-full bg-slate-300 transition" title="2. Dia"></button>
+                    <button onclick="goToSlide(3)" class="slide-dot w-3 h-3 rounded-full bg-slate-300 transition" title="3. Dia"></button>
+                    <button onclick="goToSlide(4)" class="slide-dot w-3 h-3 rounded-full bg-slate-300 transition" title="4. Dia"></button>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-slate-200 py-3 text-center text-xs text-slate-500">
+        Céges Jelmezverseny &bull; GitHub Pages Statikus Alkalmazás &bull; Minden jog fenntartva
+    </footer>
+
+    <!-- Application Script -->
+    <script>
+        // Costume dataset (Realistic office costume filenames & mock Unsplash placeholder images)
+        const COSTUMES = [
+            { id: 'c1', filename: 'cyberpunk_vampire.jpg', title: 'Cyberpunk Vampír', image: 'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?auto=format&fit=crop&w=600&q=80' },
+            { id: 'c2', filename: 'retro_astronaut.jpg', title: 'Retro Asztronauta', image: 'https://images.unsplash.com/photo-1614728894747-a83421e2b9c9?auto=format&fit=crop&w=600&q=80' },
+            { id: 'c3', filename: 'steampunk_inventor.jpg', title: 'Steampunk Feltaláló', image: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?auto=format&fit=crop&w=600&q=80' },
+            { id: 'c4', filename: 'office_zombie.jpg', title: 'Hétfő Reggeli Zombi', image: 'https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?auto=format&fit=crop&w=600&q=80' },
+            { id: 'c5', filename: 'medieval_knight.jpg', title: 'Középkori Lovag', image: 'https://images.unsplash.com/photo-1599566150163-29194dcaad36?auto=format&fit=crop&w=600&q=80' },
+            { id: 'c6', filename: 'wizard_gandalf.jpg', title: 'Irodai Varázsló', image: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=600&q=80' },
+            { id: 'c7', filename: 'superhero_ceo.jpg', title: 'Szuperhős Vezérigazgató', image: 'https://images.unsplash.com/photo-1568602471122-7832951cc4c5?auto=format&fit=crop&w=600&q=80' },
+            { id: 'c8', filename: 'pirate_captain.jpg', title: 'Kávéfüggő Kalóz', image: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=600&q=80' }
+        ];
+
+        const CATEGories = [
+            { id: 'uniqueness', name: 'Egyediség' },
+            { id: 'complexity', name: 'Komplexitás' },
+            { id: 'creativity', name: 'Kreativitás' },
+            { id: 'quality', name: 'Kép Minőség' },
+            { id: 'entertainment', name: 'Szórakoztató Érték' }
+        ];
+
+        // Application State
+        let currentUser = localStorage.getItem('costume_contest_user') || null;
+        let votes = JSON.parse(localStorage.getItem('costume_contest_votes') || '{}'); 
+        // votes structure: { username: { costumeId: { uniqueness: 8, complexity: 7, ... } } }
+        let currentCostumeId = null;
+        let currentSlide = 1;
+        let chartAvgInstance = null;
+        let chartCatInstance = null;
+
+        // Router
+        const router = {
+            navigate: function(viewName, param) {
+                document.querySelectorAll('.view').forEach(el => el.classList.add('hidden'));
+                
+                if (!currentUser && viewName !== 'login') {
+                    document.getElementById('view-login').classList.remove('hidden');
+                    return;
+                }
+
+                if (viewName === 'home') {
+                    if (!currentUser) {
+                        document.getElementById('view-login').classList.remove('hidden');
+                        return;
+                    }
+                    document.getElementById('view-home').classList.remove('hidden');
+                    renderHomeGrid();
+                } else if (viewName === 'detail') {
+                    if (!currentUser) {
+                        document.getElementById('view-login').classList.remove('hidden');
+                        return;
+                    }
+                    currentCostumeId = param;
+                    document.getElementById('view-detail').classList.remove('hidden');
+                    renderDetailView(param);
+                } else if (viewName === 'presentation') {
+                    document.getElementById('view-presentation').classList.remove('hidden');
+                    renderPresentation();
+                } else if (viewName === 'login') {
+                    document.getElementById('view-login').classList.remove('hidden');
+                }
+                window.scrollTo(0, 0);
+            }
+        };
+
+        // Initialize App
+        window.addEventListener('DOMContentLoaded', () => {
+            updateUserBadge();
+            if (!currentUser) {
+                router.navigate('login');
+            } else {
+                router.navigate('home');
+            }
+        });
+
+        function handleLogin(event) {
+            event.preventDefault();
+            const input = document.getElementById('username-input').value.trim();
+            if (!input) return;
+            currentUser = input;
+            localStorage.setItem('costume_contest_user', currentUser);
+            updateUserBadge();
+            router.navigate('home');
+        }
+
+        function logout() {
+            localStorage.removeItem('costume_contest_user');
+            currentUser = null;
+            updateUserBadge();
+            router.navigate('login');
+        }
+
+        function updateUserBadge() {
+            const badge = document.getElementById('user-badge');
+            const usernameSpan = document.getElementById('current-username');
+            if (currentUser) {
+                usernameSpan.textContent = currentUser;
+                badge.classList.remove('hidden');
+                badge.classList.add('flex');
+            } else {
+                badge.classList.add('hidden');
+                badge.classList.remove('flex');
+            }
+        }
+
+        function renderHomeGrid() {
+            const grid = document.getElementById('costumes-grid');
+            grid.innerHTML = '';
+
+            const userVotes = votes[currentUser] || {};
+            let ratedCount = 0;
+
+            COSTUMES.forEach(c => {
+                const isRated = userVotes[c.id] && Object.keys(userVotes[c.id]).length === CATEGories.length;
+                if (isRated) ratedCount++;
+
+                const card = document.createElement('div');
+                card.className = `bg-white rounded-2xl overflow-hidden shadow-sm border-2 transition duration-200 hover:shadow-md cursor-pointer flex flex-col justify-between ${isRated ? 'border-emerald-500 ring-2 ring-emerald-100' : 'border-slate-200 hover:border-corporateBlue'}`;
+                card.onclick = () => router.navigate('detail', c.id);
+
+                card.innerHTML = `
+                    <div class="relative bg-slate-900 h-56 flex items-center justify-center overflow-hidden">
+                        <img src="${c.image}" alt="${c.title}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" onerror="this.src='https://placehold.co/600x400/1E3A8A/FFFFFF?text=Jelmez'">
+                        ${isRated ? '<div class="absolute top-3 right-3 bg-emerald-500 text-white p-1.5 rounded-full shadow text-xs"><i class="fa-solid fa-check"></i></div>' : ''}
+                    </div>
+                    <div class="p-4 flex flex-col justify-between flex-1">
+                        <div>
+                            <h3 class="font-bold text-slate-800 text-base mb-1">${c.title}</h3>
+                            <p class="text-xs font-mono text-slate-400">${c.filename}</p>
+                        </div>
+                        <div class="mt-4 pt-3 border-t border-slate-100 flex justify-between items-center text-xs font-semibold">
+                            <span class="${isRated ? 'text-emerald-600' : 'text-slate-500'}">${isRated ? 'Értékelve' + (userVotes[c.id].summary ? ' (' + userVotes[c.id].summary + ' pt)' : '') : 'Még nem értékelt'}</span>
+                            <span class="text-corporateBlue flex items-center space-x-1"><span>Pontozás</span> <i class="fa-solid fa-arrow-right text-[10px]"></i></span>
+                        </div>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+
+            document.getElementById('rated-count').textContent = ratedCount;
+            document.getElementById('total-count').textContent = COSTUMES.length;
+        }
+
+        function renderDetailView(costumeId) {
+            const costume = COSTUMES.find(c => c.id === costumeId);
+            if (!costume) return;
+
+            document.getElementById('detail-image').src = costume.image;
+            document.getElementById('detail-filename').textContent = costume.filename;
+
+            const container = document.getElementById('categories-container');
+            container.innerHTML = '';
+
+            const userVotes = votes[currentUser] || {};
+            const costumeVotes = userVotes[costumeId] || {};
+
+            CATEGories.forEach(cat => {
+                const val = costumeVotes[cat.id] || 5;
+
+                const div = document.createElement('div');
+                div.className = 'bg-slate-50 p-4 rounded-xl border border-slate-200';
+                div.innerHTML = `
+                    <div class="flex justify-between items-center mb-2">
+                        <label class="font-semibold text-sm text-slate-700">${cat.name}</label>
+                        <div class="flex items-center space-x-1">
+                            <input type="number" min="1" max="10" value="${val}" id="input-${cat.id}" 
+                                oninput="updateScore('${costumeId}', '${cat.id}', this.value, 'number')"
+                                class="w-14 text-center bg-white border border-slate-300 rounded-lg py-1 font-bold text-corporateBlue text-sm focus:outline-none focus:ring-2 focus:ring-corporateBlue">
+                            <span class="text-xs text-slate-400 font-medium">/10</span>
+                        </div>
+                    </div>
+                    <input type="range" min="1" max="10" value="${val}" id="range-${cat.id}"
+                        oninput="updateScore('${costumeId}', '${cat.id}', this.value, 'range')"
+                        class="w-full accent-accentOrange cursor-pointer">
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function updateScore(costumeId, categoryId, value, source) {
+            let numVal = parseInt(value, 10);
+            if (isNaN(numVal)) numVal = 1;
+            if (numVal < 1) numVal = 1;
+            if (numVal > 10) numVal = 10;
+
+            // Sync inputs
+            if (source === 'range') {
+                document.getElementById(`input-${categoryId}`).value = numVal;
+            } else {
+                document.getElementById(`range-${categoryId}`).value = numVal;
+            }
+
+            // Save in state
+            if (!votes[currentUser]) votes[currentUser] = {};
+            if (!votes[currentUser][costumeId]) votes[currentUser][costumeId] = {};
+            
+            votes[currentUser][costumeId][categoryId] = numVal;
+
+            // Calculate overall average for costume by user
+            let sum = 0;
+            CATEGories.forEach(cat => {
+                sum += (votes[currentUser][costumeId][cat.id] || 5);
+            });
+            votes[currentUser][costumeId].summary = (sum / CATEGories.length).toFixed(1);
+
+            localStorage.setItem('costume_contest_votes', JSON.stringify(votes));
+
+            // Show save status flash
+            const status = document.getElementById('save-status');
+            status.style.opacity = '1';
+            setTimeout(() => { status.style.opacity = '0'; }, 1500);
+        }
+
+        function goToSlide(slideNum) {
+            currentSlide = slideNum;
+            document.querySelectorAll('.slide-content').forEach(el => el.classList.add('hidden'));
+            document.getElementById(`slide-${slideNum}`).classList.remove('hidden');
+
+            // Update dots
+            document.querySelectorAll('.slide-dot').forEach((dot, idx) => {
+                if (idx + 1 === slideNum) {
+                    dot.className = 'slide-dot w-3 h-3 rounded-full bg-corporateBlue transition';
+                } else {
+                    dot.className = 'slide-dot w-3 h-3 rounded-full bg-slate-300 transition';
+                }
+            });
+
+            // Update header title
+            const titles = [
+                '1. Dia: Összesített Átlagpontszámok',
+                '2. Dia: Zsűritagok Pontszámai',
+                '3. Dia: Diagramok és Grafikonok',
+                '4. Dia: Összegző Rangsorok & Győztesek'
+            ];
+            document.getElementById('slide-title').textContent = titles[slideNum - 1];
+            document.getElementById('slide-indicator').textContent = `${slideNum}. Dia`;
+
+            if (slideNum === 3) {
+                renderCharts();
+            }
+        }
+
+        function nextSlide() {
+            currentSlide = currentSlide < 4 ? currentSlide + 1 : 1;
+            goToSlide(currentSlide);
+        }
+
+        function prevSlide() {
+            currentSlide = currentSlide > 1 ? currentSlide - 1 : 4;
+            goToSlide(currentSlide);
+        }
+
+        function renderPresentation() {
+            renderSlide1();
+            renderSlide2();
+            renderSlide4();
+            goToSlide(currentSlide);
+        }
+
+        // Calculate aggregated statistics
+        function getAggregatedData() {
+            let costumeStats = {};
+            COSTUMES.forEach(c => {
+                costumeStats[c.id] = {
+                    id: c.id,
+                    filename: c.filename,
+                    title: c.title,
+                    totals: { uniqueness: 0, complexity: 0, creativity: 0, quality: 0, entertainment: 0 },
+                    counts: { uniqueness: 0, complexity: 0, creativity: 0, quality: 0, entertainment: 0 },
+                    juryScores: {}
+                };
+            });
+
+            // Aggregate votes across all users
+            Object.keys(votes).forEach(username => {
+                const userCostumes = votes[username];
+                Object.keys(userCostumes).forEach(cId => {
+                    if (!costumeStats[cId]) return;
+                    const catScores = userCostumes[cId];
+                    costumeStats[cId].juryScores[username] = catScores;
+
+                    CATEGories.forEach(cat => {
+                        if (catScores[cat.id] !== undefined) {
+                            costumeStats[cId].totals[cat.id] += catScores[cat.id];
+                            costumeStats[cId].counts[cat.id] += 1;
+                        }
+                    });
+                });
+            });
+
+            // Calculate averages
+            let results = [];
+            Object.values(costumeStats).forEach(c => {
+                let catAverages = {};
+                let sumOfAvgs = 0;
+                let activeCats = 0;
+
+                CATEGories.forEach(cat => {
+                    const cnt = c.counts[cat.id];
+                    const avg = cnt > 0 ? (c.totals[cat.id] / cnt) : 0;
+                    catAverages[cat.id] = Number(avg.toFixed(2));
+                    if (cnt > 0) {
+                        sumOfAvgs += avg;
+                        activeCats++;
+                    }
+                });
+
+                const overallAvg = activeCats > 0 ? Number((sumOfAvgs / activeCats).toFixed(2)) : 0;
+                results.push({
+                    ...c,
+                    averages: catAverages,
+                    overallAvg: overallAvg
+                });
+            });
+
+            return results;
+        }
+
+        function renderSlide1() {
+            const tbody = document.getElementById('table-slide1-body');
+            tbody.innerHTML = '';
+            const stats = getAggregatedData();
+
+            stats.sort((a, b) => b.overallAvg - a.overallAvg);
+
+            stats.forEach((c, idx) => {
+                const tr = document.createElement('tr');
+                tr.className = idx % 2 === 0 ? 'bg-white hover:bg-slate-50' : 'bg-slate-50/50 hover:bg-slate-50';
+                tr.innerHTML = `
+                    <td class="p-3.5 font-medium text-slate-800 flex items-center space-x-2">
+                        <span class="text-xs font-bold text-slate-400 w-5">#${idx + 1}</span>
+                        <div>
+                            <div class="font-bold">${c.title}</div>
+                            <div class="text-xs text-slate-400 font-mono">${c.filename}</div>
+                        </div>
+                    </td>
+                    <td class="p-3.5 text-center font-medium">${c.averages.uniqueness}</td>
+                    <td class="p-3.5 text-center font-medium">${c.averages.complexity}</td>
+                    <td class="p-3.5 text-center font-medium">${c.averages.creativity}</td>
+                    <td class="p-3.5 text-center font-medium">${c.averages.quality}</td>
+                    <td class="p-3.5 text-center font-medium">${c.averages.entertainment}</td>
+                    <td class="p-3.5 text-center font-extrabold text-corporateBlue bg-orange-50/60">${c.overallAvg}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function renderSlide2() {
+            const headerTr = document.getElementById('table-slide2-header');
+            const tbody = document.getElementById('table-slide2-body');
+            headerTr.innerHTML = '';
+            tbody.innerHTML = '';
+
+            const allJurors = Object.keys(votes);
+
+            let headerHTML = '<th class="p-3.5">Jelmez</th>';
+            allJurors.forEach(j => {
+                headerHTML += `<th class="p-3.5 text-center">${j} (Átlag)</th>`;
+            });
+            if (allJurors.length === 0) {
+                headerHTML += '<th class="p-3.5 text-center">Nincs még szavazat</th>';
+            }
+            headerTr.innerHTML = headerHTML;
+
+            COSTUMES.forEach((c, idx) => {
+                const tr = document.createElement('tr');
+                tr.className = idx % 2 === 0 ? 'bg-white hover:bg-slate-50' : 'bg-slate-50/50 hover:bg-slate-50';
+                
+                let rowHTML = `<td class="p-3.5 font-bold text-slate-800">${c.title} <span class="text-xs text-slate-400 font-normal block font-mono">${c.filename}</span></td>`;
+                
+                allJurors.forEach(j => {
+                    const userCostumeVote = votes[j] && votes[j][c.id];
+                    if (userCostumeVote && userCostumeVote.summary) {
+                        rowHTML += `<td class="p-3.5 text-center font-semibold text-corporateBlue">${userCostumeVote.summary} pt</td>`;
+                    } else {
+                        rowHTML += `<td class="p-3.5 text-center text-slate-300">-</td>`;
+                    }
+                });
+
+                if (allJurors.length === 0) {
+                    rowHTML += `<td class="p-3.5 text-center text-slate-400">-</td>`;
+                }
+
+                tr.innerHTML = rowHTML;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function renderCharts() {
+            const stats = getAggregatedData();
+            stats.sort((a, b) => b.overallAvg - a.overallAvg);
+
+            const labels = stats.map(s => s.title);
+            const overallAvgs = stats.map(s => s.overallAvg);
+
+            // Chart 1: Overall averages bar chart
+            const ctx1 = document.getElementById('chartAverageScores').getContext('2d');
+            if (chartAvgInstance) chartAvgInstance.destroy();
+            
+            chartAvgInstance = new Chart(ctx1, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Összesített Átlag',
+                        data: overallAvgs,
+                        backgroundColor: '#1E3A8A',
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { beginAtZero: true, max: 10 }
+                    },
+                    plugins: { legend: { display: false } }
+                }
+            });
+
+            // Chart 2: Category breakdown comparison
+            const ctx2 = document.getElementById('chartCategoryBreakdown').getContext('2d');
+            if (chartCatInstance) chartCatInstance.destroy();
+
+            const catDatasets = CATEGories.map((cat, i) => {
+                const colors = ['#1E3A8A', '#F97316', '#3B82F6', '#10B981', '#8B5CF6'];
+                return {
+                    label: cat.name,
+                    data: stats.map(s => s.averages[cat.id]),
+                    backgroundColor: colors[i % colors.length],
+                    borderRadius: 4
+                };
+            });
+
+            chartCatInstance = new Chart(ctx2, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: catDatasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { beginAtZero: true, max: 10 }
+                    }
+                }
+            });
+        }
+
+        function renderSlide4() {
+            const stats = getAggregatedData();
+            if (stats.length === 0) return;
+
+            // 1. Top costume by overall average
+            let topCostume = [...stats].sort((a, b) => b.overallAvg - a.overallAvg)[0];
+            document.getElementById('rank-top-costume').textContent = topCostume.title + ` (${topCostume.filename})`;
+            document.getElementById('rank-top-score').innerHTML = `${topCostume.overallAvg} <span class="text-xs text-slate-300 font-normal">pont átlag</span>`;
+
+            // 2. Category winners
+            const catWinnersList = document.getElementById('rank-category-winners');
+            catWinnersList.innerHTML = '';
+            CATEGories.forEach(cat => {
+                let best = [...stats].sort((a, b) => b.averages[cat.id] - a.averages[cat.id])[0];
+                const li = document.createElement('li');
+                li.className = 'flex justify-between items-center text-xs border-b border-slate-100 pb-1.5';
+                li.innerHTML = `<span class="font-semibold text-slate-700">${cat.name}:</span> <span class="font-bold text-corporateBlue">${best ? best.title + ' (' + best.averages[cat.id] + ' pt)' : 'N/A'}</span>`;
+                catWinnersList.appendChild(li);
+            });
+
+            // 3. Jury favorites (each user's highest rated costume)
+            const juryFavContainer = document.getElementById('rank-jury-favorites');
+            juryFavContainer.innerHTML = '';
+            const allJurors = Object.keys(votes);
+
+            if (allJurors.length === 0) {
+                juryFavContainer.innerHTML = '<p class="text-xs text-slate-400">Még nincsenek szavazatok.</p>';
+            } else {
+                allJurors.forEach(j => {
+                    const userCostumes = votes[j];
+                    let maxScore = -1;
+                    let favCostumeId = null;
+
+                    Object.keys(userCostumes).forEach(cId => {
+                        const summary = parseFloat(userCostumes[cId].summary || 0);
+                        if (summary > maxScore) {
+                            maxScore = summary;
+                            favCostumeId = cId;
+                        }
+                    });
+
+                    const costumeObj = COSTUMES.find(c => c.id === favCostumeId);
+                    const div = document.createElement('div');
+                    div.className = 'flex justify-between items-center text-xs bg-slate-50 p-2 rounded-lg border border-slate-100';
+                    div.innerHTML = `<span class="font-medium text-slate-700"><i class="fa-solid fa-user text-accentOrange mr-1"></i> ${j}:</span> <span class="font-bold text-corporateBlue">${costumeObj ? costumeObj.title : 'N/A'} (${maxScore} pt)</span>`;
+                    juryFavContainer.appendChild(div);
+                });
+            }
+        }
+
+        // Export data to JSON file for static GitHub Pages backup
+        function exportDataJSON() {
+            const dataToExport = {
+                votes: votes,
+                exportDate: new Date().toISOString()
+            };
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(dataToExport, null, 2));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", `jelmezverseny_szavazatok_${new Date().toISOString().slice(0,10)}.json`);
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+        }
+
+        // Import data from JSON file
+        function importDataJSON(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const parsed = JSON.parse(e.target.result);
+                    if (parsed.votes) {
+                        votes = parsed.votes;
+                        localStorage.setItem('costume_contest_votes', JSON.stringify(votes));
+                        alert('Szavazatok sikeresen betöltve!');
+                        if (!document.getElementById('view-home').classList.contains('hidden')) {
+                            renderHomeGrid();
+                        } else if (!document.getElementById('view-presentation').classList.contains('hidden')) {
+                            renderPresentation();
+                        }
+                    } else {
+                        alert('Érvénytelen fájlformátum.');
+                    }
+                } catch(err) {
+                    alert('Hiba a JSON fájl olvasásakor.');
+                }
+            };
+            reader.readAsText(file);
+        }
+    </script>
+</body>
+</html>
