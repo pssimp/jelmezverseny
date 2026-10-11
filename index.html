@@ -26,14 +26,32 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Inter', sans-serif; }
+        /* Velencei maszkos elegáns háttér minta */
+/* Elegáns lila álarcos háttér */
+        .venetian-bg {
+            background-color: #0d0b14;
+            background-image: linear-gradient(rgba(13, 11, 20, 0.4), rgba(13, 11, 20, 0.4)), url('images/masquerade_bg.jpg');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            background-repeat: no-repeat;
+        }
         /* Custom scrollbar */
         ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-track { background: #f1f1f1; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        /* Animációk */
+        @keyframes pulseScale {
+            0% { transform: scale(1); }
+            50% { transform: scale(0.97); opacity: 0.8; }
+            100% { transform: scale(1); }
+        .animate-click {
+            animation: pulseScale 0.25s ease-in-out;
+        }
     </style>
 </head>
-<body class="h-full bg-softBackground text-slate-800 flex flex-col">
+<body class="h-full venetian-bg text-slate-800 flex flex-col">
 
     <!-- Navigation Bar -->
     <header class="bg-corporateBlue text-white shadow-md sticky top-0 z-50">
@@ -70,7 +88,7 @@
         
         <!-- View 1: Login View -->
         <section id="view-login" class="view hidden flex-1 flex items-center justify-center">
-            <div class="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full border border-slate-100 text-center">
+            <div class="bg-white/95 backdrop-blur p-8 rounded-2xl shadow-xl max-w-md w-full border border-slate-100 text-center">
                 <div class="w-16 h-16 bg-orange-100 text-accentOrange rounded-full flex items-center justify-center mx-auto mb-4 text-2xl shadow-inner">
                     <i class="fa-solid fa-id-badge"></i>
                 </div>
@@ -98,12 +116,16 @@
 
         <!-- View 2: Home Grid View -->
         <section id="view-home" class="view hidden flex-1 flex flex-col">
-            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div class="bg-white/95 backdrop-blur p-6 rounded-2xl shadow-sm border border-slate-200 mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
                     <h2 class="text-2xl font-bold text-corporateBlue">Jelmezek Galériája</h2>
                     <p class="text-sm text-slate-500">Kattintson egy jelmezre a részletes értékeléshez és pontozáshoz.</p>
                 </div>
-                <div class="flex items-center space-x-3 text-sm">
+                <div class="flex items-center space-x-3 text-sm flex-wrap gap-2">
+                    <button onclick="router.navigate('guide')" class="bg-slate-100 hover:bg-slate-200 text-corporateBlue px-4 py-2 rounded-xl text-xs font-semibold transition border border-slate-200 flex items-center space-x-1.5 shadow-sm">
+                        <i class="fa-solid fa-book-open text-accentOrange"></i>
+                        <span>Értékelési útmutató</span>
+                    </button>
                     <div class="flex items-center space-x-1.5 bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-lg border border-emerald-200">
                         <span class="w-3 h-3 rounded-full bg-emerald-500 inline-block"></span>
                         <span id="rated-count" class="font-semibold">0</span><span>/</span><span id="total-count">0</span> <span>Értékelve</span>
@@ -120,13 +142,13 @@
         <!-- View 3: Detail Rating View -->
         <section id="view-detail" class="view hidden flex-1 flex flex-col">
             <div class="mb-4">
-                <button onclick="router.navigate('home')" class="inline-flex items-center space-x-2 text-corporateBlue hover:text-blue-900 font-semibold bg-white px-4 py-2 rounded-xl shadow-sm border border-slate-200 transition">
+                <button onclick="playBackSound(); router.navigate('home')" class="inline-flex items-center space-x-2 text-corporateBlue hover:text-blue-900 font-semibold bg-white px-4 py-2 rounded-xl shadow-sm border border-slate-200 transition">
                     <i class="fa-solid fa-arrow-left"></i>
                     <span>Vissza a főoldalra</span>
                 </button>
             </div>
 
-            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden grid grid-cols-1 lg:grid-cols-12 flex-1">
+            <div class="bg-white/95 backdrop-blur rounded-2xl shadow-sm border border-slate-200 overflow-hidden grid grid-cols-1 lg:grid-cols-12 flex-1">
                 <!-- Costume Image Column -->
                 <div class="lg:col-span-5 bg-slate-900 flex flex-col items-center justify-center p-6 relative">
                     <img id="detail-image" src="" alt="Jelmez" class="max-h-[400px] w-auto object-contain rounded-xl shadow-lg border border-slate-700">
@@ -138,7 +160,13 @@
                 <!-- Rating Form Column -->
                 <div class="lg:col-span-7 p-6 sm:p-8 flex flex-col justify-between">
                     <div>
-                        <h3 class="text-xl font-bold text-corporateBlue mb-1">Jelmez Értékelése</h3>
+                        <div class="flex justify-between items-center mb-1">
+                            <h3 class="text-xl font-bold text-corporateBlue">Jelmez Értékelése</h3>
+                            <button onclick="router.navigate('guide')" class="text-xs text-accentOrange hover:underline font-medium flex items-center space-x-1">
+                                <i class="fa-solid fa-circle-question"></i>
+                                <span>Kategóriák jelentése</span>
+                            </button>
+                        </div>
                         <p class="text-xs text-slate-500 mb-6">Pontozza a jelmezt 1-től 10-ig terjedő skálán az alábbi 5 kategóriában.</p>
 
                         <div id="categories-container" class="space-y-5">
@@ -151,7 +179,7 @@
                             <i class="fa-solid fa-circle-check"></i>
                             <span>Változások mentve</span>
                         </span>
-                        <button onclick="router.navigate('home')" class="bg-corporateBlue hover:bg-blue-900 text-white font-semibold py-2.5 px-6 rounded-xl shadow transition">
+                        <button onclick="playBackSound(); router.navigate('home')" class="bg-corporateBlue hover:bg-blue-900 text-white font-semibold py-2.5 px-6 rounded-xl shadow transition">
                             Kész / Vissza
                         </button>
                     </div>
@@ -159,9 +187,107 @@
             </div>
         </section>
 
+        <!-- View 5: Evaluation Guide View -->
+        <section id="view-guide" class="view hidden flex-1 flex flex-col">
+            <div class="mb-4">
+                <button onclick="playBackSound(); router.navigate('home')" class="inline-flex items-center space-x-2 text-corporateBlue hover:text-blue-900 font-semibold bg-white px-4 py-2 rounded-xl shadow-sm border border-slate-200 transition">
+                    <i class="fa-solid fa-arrow-left"></i>
+                    <span>Vissza a főoldalra</span>
+                </button>
+            </div>
+
+            <div class="bg-white/95 backdrop-blur p-6 sm:p-8 rounded-2xl shadow-sm border border-slate-200 flex-1 space-y-6">
+                <div>
+                    <h2 class="text-2xl font-bold text-corporateBlue flex items-center space-x-2">
+                        <i class="fa-solid fa-book-open text-accentOrange"></i>
+                        <span>Értékelési Útmutató</span>
+                    </h2>
+                    <p class="text-sm text-slate-500 mt-1">Részletes magyarázat a szavazási kategóriákhoz, konkrét példákkal a korrekt zsűrizéshez.</p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Uniqueness -->
+                    <div class="bg-slate-50 p-5 rounded-xl border border-slate-200">
+                        <h3 class="font-bold text-corporateBlue text-base mb-2 flex items-center space-x-2">
+                            <span class="w-2 h-2 rounded-full bg-accentOrange"></span>
+                            <span>Egyediség</span>
+                        </h3>
+                        <p class="text-sm text-slate-600 leading-relaxed mb-3">
+                            Mennyire egyedi a jelmez, mind az alapkoncepció, mind a megvalósítás terén. Itt azt értékeljük, ha a versenyző eltért a népszerűbb karakterektől, és azt is, hogy a megvalósításban is valami újszerű, egyedülálló ötlete volt.
+                        </p>
+                        <div class="bg-blue-50/70 p-3 rounded-lg border border-blue-100 text-xs text-slate-700">
+                            <strong>Példa:</strong> Elgázolt macska jelmez egy egyedi ötlet, ha egy nagy kartonból kivágott autót is ragaszt a hátára az egyedi megvalósítás.
+                        </div>
+                    </div>
+
+                    <!-- Complexity -->
+                    <div class="bg-slate-50 p-5 rounded-xl border border-slate-200">
+                        <h3 class="font-bold text-corporateBlue text-base mb-2 flex items-center space-x-2">
+                            <span class="w-2 h-2 rounded-full bg-accentOrange"></span>
+                            <span>Komplexitás</span>
+                        </h3>
+                        <p class="text-sm text-slate-600 leading-relaxed mb-3">
+                            A jelmez összetettsége, technikai bonyolultsága. Itt egyrészt azt nézzük, hogy milyen sok elemből áll a jelmez, hányféle különböző anyagból áll össze, tartalmaz-e mozgó, mechanikus vagy elektronikus elemeket, másrészt szerkezetében, design-ban mennyire összetett.
+                        </p>
+                        <div class="bg-blue-50/70 p-3 rounded-lg border border-blue-100 text-xs text-slate-700">
+                            <strong>Példa:</strong> Mozgatható angyalszárnyak fémből, szíjakból és műtollakból.
+                        </div>
+                    </div>
+
+                    <!-- Creativity -->
+                    <div class="bg-slate-50 p-5 rounded-xl border border-slate-200">
+                        <h3 class="font-bold text-corporateBlue text-base mb-2 flex items-center space-x-2">
+                            <span class="w-2 h-2 rounded-full bg-accentOrange"></span>
+                            <span>Kreativitás</span>
+                        </h3>
+                        <p class="text-sm text-slate-600 leading-relaxed mb-3">
+                            Mennyire ötletes a témaválasztás és a megvalósítás. A kreativitás abban tér el az egyediségtől, hogy egy dinamikusabb fogalom, és inkább az alkotófolyamatra helyezi a hangsúlyt. Vagyis azt értékeljük, hogy a versenyző a jelmezével hogyan igyekszik reprezentálni egy karaktert. Ebben benne van maga a jelmez, de az is, ahogy a versenyző viseli, ahogy pózol a képen stb.
+                        </p>
+                        <div class="bg-blue-50/70 p-3 rounded-lg border border-blue-100 text-xs text-slate-700">
+                            <strong>Példa:</strong> Popeye jelmez, a bicepszeknél pumpával felfújható lufik, hogy látványosan izmosabb lehessen ha spenótot eszik.
+                        </div>
+                    </div>
+
+                    <!-- Quality -->
+                    <div class="bg-slate-50 p-5 rounded-xl border border-slate-200">
+                        <h3 class="font-bold text-corporateBlue text-base mb-2 flex items-center space-x-2">
+                            <span class="w-2 h-2 rounded-full bg-accentOrange"></span>
+                            <span>Kép Minőség</span>
+                        </h3>
+                        <p class="text-sm text-slate-600 leading-relaxed mb-3">
+                            A készített fotó minősége technikai és kompozíciós szempontból. Jól lett-e beállítva a kép, van-e elég fény, a pózban, amit felvesz a versenyző elég jól látszik-e a jelmez és hozzáad-e a bármit az ábrázolandó karakterhez, növeli-e a jelmez hatását.
+                        </p>
+                        <div class="bg-blue-50/70 p-3 rounded-lg border border-blue-100 text-xs text-slate-700">
+                            <strong>Példa:</strong> Superman jelmez, ventilátor fújja a köpenyét hogy lobogjon a hatás miatt, ikonikus pózban csípőre tett kézzel stb.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Entertainment Value (Full width) -->
+                <div class="bg-slate-50 p-5 rounded-xl border border-slate-200">
+                    <h3 class="font-bold text-corporateBlue text-base mb-2 flex items-center space-x-2">
+                        <span class="w-2 h-2 rounded-full bg-accentOrange"></span>
+                        <span>Szórakoztató Érték</span>
+                    </h3>
+                    <p class="text-sm text-slate-600 leading-relaxed mb-3">
+                        Mennyire vicces, ijesztő vagy egyszerűen hatásos a jelmez. Egy technikailag szegényes jelmez is lehet hatásos ha a viselője színjátékkal kiegészíti az értékét. Tehát itt ne szigorúan a jelmezt nézzük, és ne is csak a fotó minőségét, hanem az összhatást, az érzelmi benyomást, amit ránk tett.
+                    </p>
+                    <div class="bg-blue-50/70 p-3 rounded-lg border border-blue-100 text-xs text-slate-700">
+                        <strong>Példa:</strong> Feri Scooby Doo jelmeze tavaly.
+                    </div>
+                </div>
+
+                <div class="pt-4 flex justify-end">
+                    <button onclick="playBackSound(); router.navigate('home')" class="bg-corporateBlue hover:bg-blue-900 text-white font-semibold py-2.5 px-6 rounded-xl shadow transition">
+                        Vissza a galériába
+                    </button>
+                </div>
+            </div>
+        </section>
+
         <!-- View 4: Presentation & Results Dashboard View -->
         <section id="view-presentation" class="view hidden flex-1 flex flex-col">
-            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div class="bg-white/95 backdrop-blur p-6 rounded-2xl shadow-sm border border-slate-200 mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
                     <h2 class="text-2xl font-bold text-corporateBlue flex items-center space-x-2">
                         <i class="fa-solid fa-chart-line text-accentOrange"></i>
@@ -183,7 +309,7 @@
             </div>
 
             <!-- Slide Container -->
-            <div class="bg-white rounded-2xl shadow-lg border border-slate-200 flex-1 flex flex-col overflow-hidden mb-6">
+            <div class="bg-white/95 backdrop-blur rounded-2xl shadow-lg border border-slate-200 flex-1 flex flex-col overflow-hidden mb-6">
                 <!-- Slide Navigation Header -->
                 <div class="bg-slate-50 px-6 py-4 border-b border-slate-200 flex justify-between items-center">
                     <div class="flex items-center space-x-2">
@@ -325,7 +451,7 @@
     </main>
 
     <!-- Footer -->
-    <footer class="bg-white border-t border-slate-200 py-3 text-center text-xs text-slate-500">
+    <footer class="bg-white/9sten backdrop-blur border-t border-slate-200 py-3 text-center text-xs text-slate-500">
         Céges Jelmezverseny &bull; GitHub Pages Statikus Alkalmazás &bull; Minden jog fenntartva
     </footer>
 
@@ -355,6 +481,50 @@
         let chartAvgInstance = null;
         let chartCatInstance = null;
 
+        // Web Audio API Hangeffektek
+        let audioCtx = null;
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+
+        function playClickSound() {
+            try {
+                initAudio();
+                if (audioCtx.state === 'suspended') { audioCtx.resume(); }
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(580, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.08);
+                gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.08);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.08);
+            } catch(e) {}
+        }
+
+        function playBackSound() {
+            try {
+                initAudio();
+                if (audioCtx.state === 'suspended') { audioCtx.resume(); }
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(440, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(300, audioCtx.currentTime + 0.1);
+                gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.1);
+            } catch(e) {}
+        }
+
         const router = {
             navigate: function(viewName, param) {
                 document.querySelectorAll('.view').forEach(el => el.classList.add('hidden'));
@@ -379,6 +549,8 @@
                     currentCostumeId = param;
                     document.getElementById('view-detail').classList.remove('hidden');
                     renderDetailView(param);
+                } else if (viewName === 'guide') {
+                    document.getElementById('view-guide').classList.remove('hidden');
                 } else if (viewName === 'presentation') {
                     document.getElementById('view-presentation').classList.remove('hidden');
                     renderPresentation();
@@ -400,6 +572,7 @@
 
         function handleLogin(event) {
             event.preventDefault();
+            playClickSound();
             const input = document.getElementById('username-input').value.trim();
             if (!input) return;
             currentUser = input;
@@ -409,6 +582,7 @@
         }
 
         function logout() {
+            playBackSound();
             localStorage.removeItem('costume_contest_user');
             currentUser = null;
             updateUserBadge();
@@ -442,7 +616,14 @@
 
                 const card = document.createElement('div');
                 card.className = `bg-white rounded-2xl overflow-hidden shadow-sm border-2 transition duration-200 hover:shadow-md cursor-pointer flex flex-col justify-between ${isRated ? 'border-emerald-500 ring-2 ring-emerald-100' : 'border-slate-200 hover:border-corporateBlue'}`;
-                card.onclick = () => router.navigate('detail', c.id);
+                
+                card.onclick = () => {
+                    playClickSound();
+                    card.classList.add('animate-click');
+                    setTimeout(() => {
+                        router.navigate('detail', c.id);
+                    }, 200);
+                };
 
                 card.innerHTML = `
                     <div class="relative bg-slate-900 h-56 flex items-center justify-center overflow-hidden">
@@ -502,7 +683,7 @@
                         <label class="flex flex-col items-center cursor-pointer group">
                             <span class="text-xs font-semibold text-slate-500 mb-1 group-hover:text-corporateBlue">${i}</span>
                             <input type="radio" name="cat-${cat.id}" value="${i}" ${isChecked}
-                                onchange="updateScore('${costumeId}', '${cat.id}', ${i})"
+                                onchange="playClickSound(); updateScore('${costumeId}', '${cat.id}', ${i})"
                                 class="w-4 h-4 text-accentOrange accent-accentOrange cursor-pointer">
                         </label>
                     `;
@@ -549,6 +730,7 @@
         }
 
         function goToSlide(slideNum) {
+            playClickSound();
             currentSlide = slideNum;
             document.querySelectorAll('.slide-content').forEach(el => el.classList.add('hidden'));
             document.getElementById(`slide-${slideNum}`).classList.remove('hidden');
@@ -826,6 +1008,7 @@
         }
 
         function exportDataJSON() {
+            playClickSound();
             const dataToExport = {
                 votes: votes,
                 exportDate: new Date().toISOString()
@@ -849,6 +1032,7 @@
                     if (parsed.votes) {
                         votes = parsed.votes;
                         localStorage.setItem('costume_contest_votes', JSON.stringify(votes));
+                        playClickSound();
                         alert('Szavazatok sikeresen betöltve!');
                         if (!document.getElementById('view-home').classList.contains('hidden')) {
                             renderHomeGrid();
