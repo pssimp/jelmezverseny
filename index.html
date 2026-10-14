@@ -178,7 +178,7 @@
                             <i class="fa-solid fa-circle-check"></i>
                             <span>Adatok elküldve a Google Táblázatba</span>
                         </span>
-                        <button onclick="saveAndReturn(currentCostumeId)" class="bg-corporateBlue hover:bg-blue-900 text-white font-semibold py-2.5 px-6 rounded-xl shadow transition">
+                        <button onclick="(currentCostumeId)" class="bg-corporateBlue hover:bg-blue-900 text-white font-semibold py-2.5 px-6 rounded-xl shadow transition">
                             Kész / Vissza
                         </button>
                     </div>
@@ -759,28 +759,31 @@
 
         function saveAndReturn(costumeId) {
             // Ellenőrizzük, hogy minden kategória ki van-e töltve
-            const missingCats = CATEGories.filter(cat => currentRatingState[cat.id] === null);
+            const missingCats = CATEGories.filter(cat => currentRatingState[cat.id] === null || isNaN(currentRatingState[cat.id]));
             
             if (missingCats.length > 0) {
                 alert('Kérjük, értékelje az összes kategóriát a mentés előtt!');
                 return;
             }
 
-            // Pontos átlag számítása kizárólag a megadott pontokból
-            let sum = 0;
-            CATEGories.forEach(cat => {
-                sum += currentRatingState[cat.id];
-            });
-            let summaryAvg = (sum / CATEGories.length).toFixed(1);
+            // Pontos átlag számítása: a kategóriák pontjainak összege osztva 5-tel
+            const u = Number(currentRatingState.uniqueness);
+            const comp = Number(currentRatingState.complexity);
+            const cr = Number(currentRatingState.creativity);
+            const q = Number(currentRatingState.quality);
+            const e = Number(currentRatingState.entertainment);
+
+            const sum = u + comp + cr + q + e;
+            const summaryAvg = (sum / 5).toFixed(1); // Például: 38 / 5 = 7.6
 
             const payload = {
                 username: currentUser,
                 costumeId: costumeId,
-                uniqueness: currentRatingState.uniqueness,
-                complexity: currentRatingState.complexity,
-                creativity: currentRatingState.creativity,
-                quality: currentRatingState.quality,
-                entertainment: currentRatingState.entertainment,
+                uniqueness: u,
+                complexity: comp,
+                creativity: cr,
+                quality: q,
+                entertainment: e,
                 summary: parseFloat(summaryAvg)
             };
 
