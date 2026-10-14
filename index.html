@@ -546,7 +546,7 @@
                     }
                     currentCostumeId = param;
                     document.getElementById('view-detail').classList.remove('hidden');
-                    (param); // <--- JAVÍTVA: Itt hívódik meg helyesen a 
+                    renderDetailView(param); // <--- JAVÍTVA: Itt hívódik meg helyesen a 
                 } else if (viewName === 'guide') {
                     document.getElementById('view-guide').classList.remove('hidden');
                 } else if (viewName === 'presentation') {
