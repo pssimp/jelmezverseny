@@ -609,15 +609,29 @@
                 if(callback) callback();
                 return;
             }
+
+            // Először megpróbáljuk betölteni a helyi gyorstárazott adatokat a villámgyors induláshoz
+            const cachedVotes = localStorage.getItem('costume_contest_cache');
+            if (cachedVotes) {
+                try {
+                    remoteVotes = JSON.parse(cachedVotes);
+                    if (callback) callback(); // Azonnal renderelünk a cache-ből
+                } catch (e) {}
+            }
+
+            // A háttérben lekérdezzük a friss adatokat a Google Sheets-ről
             fetch(GOOGLE_SCRIPT_URL)
                 .then(response => response.json())
                 .then(data => {
-                    remoteVotes = data;
-                    if(callback) callback();
+                    if (Array.isArray(data)) {
+                        remoteVotes = data;
+                        localStorage.setItem('costume_contest_cache', JSON.stringify(data)); // Frissítjük a gyorstárat
+                        if (callback && !cachedVotes) callback(); // Ha még nem futott le, itt hívjuk meg
+                    }
                 })
                 .catch(err => {
                     console.error('Hiba a Google Sheets adatok olvasásakor:', err);
-                    if(callback) callback();
+                    if (callback && !cachedVotes) callback();
                 });
         }
 
@@ -784,24 +798,31 @@
                 creativity: cr,
                 quality: q,
                 entertainment: e,
-                summary: parseFloat(summaryAvg)
+                summary: parseFloat(summaryAvg),
+                datum: new Date().toISOString()
             };
 
-            // Frissítjük a helyi memóriát
+            // 1. ELŐSZÖR HELYBEN FRISSÍTÜNK (Azonnali vizuális visszajelzés, 0 másodperc várakozás)
+            // Kiszűrjük a régi szavazatát ennek a felhasználónak ehhez a jelmezhez, ha volt
+            remoteVotes = remoteVotes.filter(v => !(v.username === currentUser && (v.costumeId === costumeId || v['Jelmez azonosítója'] === costumeId)));
             remoteVotes.push(payload);
+            
+            // Frissítjük a helyi gyorstárat is
+            localStorage.setItem('costume_contest_cache', JSON.stringify(remoteVotes));
 
-            // Küldés a Google Sheets-nek
+            // 2. AZONNAL VISSZANAVIGÁLUNK (Nem várjuk meg a lassú Google Server választ)
+            playBackSound();
+            router.navigate('home');
+
+            // 3. A HÁTTÉRBEN KÜLDJÜK EL A GOOGLE SHEETS-NEK
             if (!GOOGLE_SCRIPT_URL.includes('IDE_ILLESZD')) {
                 fetch(GOOGLE_SCRIPT_URL, {
                     method: 'POST',
                     mode: 'no-cors',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
-                }).catch(err => console.error('Mentési hiba:', err));
+                }).catch(err => console.error('Háttér mentési hiba:', err));
             }
-
-            playBackSound();
-            router.navigate('home');
         }
 
         function goToSlide(slideNum) {
