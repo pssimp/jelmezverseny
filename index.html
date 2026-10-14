@@ -178,7 +178,7 @@
                             <i class="fa-solid fa-circle-check"></i>
                             <span>Adatok elküldve a Google Táblázatba</span>
                         </span>
-                        <button onclick="playBackSound(); router.navigate('home')" class="bg-corporateBlue hover:bg-blue-900 text-white font-semibold py-2.5 px-6 rounded-xl shadow transition">
+                        <button onclick="saveAndReturn(currentCostumeId)" class="bg-corporateBlue hover:bg-blue-900 text-white font-semibold py-2.5 px-6 rounded-xl shadow transition">
                             Kész / Vissza
                         </button>
                     </div>
@@ -477,6 +477,7 @@
         let currentSlide = 1;
         let chartAvgInstance = null;
         let chartCatInstance = null;
+        let currentRatingState = { uniqueness: 5, complexity: 5, creativity: 5, quality: 5, entertainment: 5 };
 
         // Web Audio API Hangeffektek
         let audioCtx = null;
@@ -626,26 +627,28 @@
 
             let ratedCount = 0;
 
+            // Kiszűrjük a legutolsó szavazatokat az összesítéshez
+            let latestVotesMap = {};
+            for (let i = remoteVotes.length - 1; i >= 0; i--) {
+                const v = remoteVotes[i];
+                if (!v.username || !v.costumeId) continue;
+                const key = v.username + '_' + v.costumeId;
+                if (!latestVotesMap[key]) {
+                    latestVotesMap[key] = v;
+                }
+            }
+            let activeVotes = Object.values(latestVotesMap);
+
             COSTUMES.forEach(c => {
-                // Megkeressük az aktuális felhasználó szavazatait ehhez a jelmezhez
-                const userVotesList = remoteVotes.filter(v => v.username === currentUser && v.costumeId === c.id);
-                const isRated = userVotesList.length > 0;
+                const userVote = activeVotes.find(v => v.username === currentUser && v.costumeId === c.id);
+                const isRated = !!userVote;
                 if (isRated) ratedCount++;
 
-                // Kiszámoljuk a pontos átlagot, biztonságos parseFloat konverzióval
                 let userSummary = '5.0';
-                if (isRated) {
-                    let sum = 0;
-                    let validCount = 0;
-                    userVotesList.forEach(v => {
-                        const val = parseFloat(v.summary);
-                        if (!isNaN(val)) {
-                            sum += val;
-                            validCount++;
-                        }
-                    });
-                    if (validCount > 0) {
-                        userSummary = (sum / validCount).toFixed(1);
+                if (isRated && userVote.summary) {
+                    const val = parseFloat(userVote.summary);
+                    if (!isNaN(val)) {
+                        userSummary = val.toFixed(1);
                     }
                 }
 
@@ -690,29 +693,30 @@
             document.getElementById('detail-image').src = costume.image;
             document.getElementById('detail-filename').textContent = costume.filename;
 
+            // Megkeressük a felhasználó legutóbbi mentett szavazatát ehhez a jelmezhez (ha van)
+            let latestUserVote = null;
+            for (let i = remoteVotes.length - 1; i >= 0; i--) {
+                const v = remoteVotes[i];
+                if (v.username === currentUser && v.costumeId === costumeId) {
+                    latestUserVote = v;
+                    break;
+                }
+            }
+
+            // Betöltjük a state-be a meglévő értéket, vagy alapértelmezett 5-ösöket adunk
+            currentRatingState = {
+                uniqueness: latestUserVote ? Number(latestUserVote.uniqueness) || 5 : 5,
+                complexity: latestUserVote ? Number(latestUserVote.complexity) || 5 : 5,
+                creativity: latestUserVote ? Number(latestUserVote.creativity) || 5 : 5,
+                quality: latestUserVote ? Number(latestUserVote.quality) || 5 : 5,
+                entertainment: latestUserVote ? Number(latestUserVote.entertainment) || 5 : 5
+            };
+
             const container = document.getElementById('categories-container');
             container.innerHTML = '';
 
-            // Megkeressük a felhasználó eddigi szavazatait ehhez a jelmezhez
-            const userCostumeVotes = {};
-            remoteVotes.forEach(v => {
-                if (v.username === currentUser && v.costumeId === costumeId) {
-                    // Melyik kategória? A Google Sheet-be külön soronként mentünk
-                }
-            });
-
             CATEGories.forEach(cat => {
-                // Alapértelmezett 5, ha még nem szavazott
-                let val = 5;
-                const existing = remoteVotes.find(v => v.username === currentUser && v.costumeId === costumeId);
-                // Egyszerűsítve: lekérdezzük az adott kategória értékét
-                const specificVote = remoteVotes.find(v => v.username === currentUser && v.costumeId === costumeId);
-                // Mivel minden kategória külön rögzül, keressük meg a táblázatból:
-                const matchedCatVote = remoteVotes.find(v => v.username === currentUser && v.costumeId === costumeId && v.category === cat.id);
-                
-                // Ha mátrixból nézzük:
-                // A Google Apps Script minden kategóriát külön beírhat, vagy egységbe menthet. 
-                // A legegyszerűbb, ha a felhasználó kattintáskor elküldi az összes kategóriát vagy az aktuálisat.
+                let val = currentRatingState[cat.id];
 
                 const div = document.createElement('div');
                 div.className = 'bg-slate-50 p-4 rounded-xl border border-slate-200';
@@ -724,7 +728,7 @@
                         <label class="flex flex-col items-center cursor-pointer group">
                             <span class="text-xs font-semibold text-slate-500 mb-1 group-hover:text-corporateBlue">${i}</span>
                             <input type="radio" name="cat-${cat.id}" value="${i}" ${isChecked}
-                                onchange="playClickSound(); updateAndSendScore('${costumeId}', '${cat.id}', ${i})"
+                                onchange="playClickSound(); updateScoreLocally('${cat.id}', ${i})"
                                 class="w-4 h-4 text-accentOrange accent-accentOrange cursor-pointer">
                         </label>
                     `;
@@ -743,10 +747,8 @@
             });
         }
 
-        // Értékelés mentése és elküldése a Google Sheets-be
-        let currentRatingState = { uniqueness: 5, complexity: 5, creativity: 5, quality: 5, entertainment: 5 };
-
-        function updateAndSendScore(costumeId, categoryId, value) {
+        // Csak helyben frissít (mentés nélkül kattintgatás közben)
+        function updateScoreLocally(categoryId, value) {
             let numVal = parseInt(value, 10);
             if (isNaN(numVal)) numVal = 1;
 
@@ -754,13 +756,18 @@
             if (labelEl) labelEl.textContent = numVal;
 
             currentRatingState[categoryId] = numVal;
+        }
 
-            // Szumma átlag számítása
+        // Akkor küldi el a Google Sheets-be, amikor a Kész / Vissza gombra kattintanak
+        function saveAndReturn(costumeId) {
             let sum = 0;
             let count = 0;
-            Object.values(currentRatingState).forEach(v => { 
-                const n = parseFloat(v);
-                if (!isNaN(n)) { sum += n; count++; }
+            Object.keys(currentRatingState).forEach(key => {
+                const n = parseFloat(currentRatingState[key]);
+                if (!isNaN(n)) {
+                    sum += n;
+                    count++;
+                }
             });
             let summaryAvg = count > 0 ? (sum / count).toFixed(1) : "5.0";
 
@@ -775,29 +782,21 @@
                 summary: parseFloat(summaryAvg)
             };
 
-            // Helyi memóriában lévő tömb frissítése azonnal
-            const existingIdx = remoteVotes.findIndex(v => v.username === currentUser && v.costumeId === costumeId);
-            if (existingIdx >= 0) {
-                remoteVotes[existingIdx] = payload;
-            } else {
-                remoteVotes.push(payload);
-            }
+            // Helyi memóriába felvesszük az új értékelést
+            remoteVotes.push(payload);
 
-            // Küldés a Google Sheets-be
+            // Küldés a Google Sheets-nek
             if (!GOOGLE_SCRIPT_URL.includes('IDE_ILLESZD')) {
                 fetch(GOOGLE_SCRIPT_URL, {
                     method: 'POST',
                     mode: 'no-cors',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
-                }).then(() => {
-                    const status = document.getElementById('save-status');
-                    if (status) {
-                        status.style.opacity = '1';
-                        setTimeout(() => { status.style.opacity = '0'; }, 1500);
-                    }
-                });
+                }).catch(err => console.error('Mentési hiba:', err));
             }
+
+            playBackSound();
+            router.navigate('home');
         }
 
         function goToSlide(slideNum) {
@@ -858,9 +857,7 @@
                 };
             });
 
-            // 1. Lépés: Kiszűrjük, hogy minden zsűritagnál jelmezenként csak a LEGUTOLSÓ értékelés számítson
-            // Mivel a remoteVotes tömbben a sorrend olyan, ahogy a sorok beérkeztek a táblázatba, 
-            // ha hátulról (a legfrissebbtől) haladunk előre, az első találat lesz a legutolsó módosítás.
+            // Csak a legutolsó szavazat számít felhasználónként és jelmezenként
             let latestVotesMap = {};
             for (let i = remoteVotes.length - 1; i >= 0; i--) {
                 const v = remoteVotes[i];
@@ -868,13 +865,12 @@
                 
                 const key = v.username + '_' + v.costumeId;
                 if (!latestVotesMap[key]) {
-                    latestVotesMap[key] = v; // Csak a legfrissebb mentést rögzítjük
+                    latestVotesMap[key] = v;
                 }
             }
 
             let uniqueLatestVotes = Object.values(latestVotesMap);
 
-            // 2. Lépés: A legfrissebb szavazatok aggregálása a statisztikákhoz és grafikonokhoz
             uniqueLatestVotes.forEach(v => {
                 const cId = v.costumeId;
                 const username = v.username;
@@ -968,6 +964,16 @@
             }
             headerTr.innerHTML = headerHTML;
 
+            // Legfrissebb szavazatok lekérése a mátrixhoz is
+            let latestVotesMap = {};
+            for (let i = remoteVotes.length - 1; i >= 0; i--) {
+                const v = remoteVotes[i];
+                if (!v.username || !v.costumeId) continue;
+                const key = v.username + '_' + v.costumeId;
+                if (!latestVotesMap[key]) latestVotesMap[key] = v;
+            }
+            let activeVotes = Object.values(latestVotesMap);
+
             COSTUMES.forEach((c, idx) => {
                 const tr = document.createElement('tr');
                 tr.className = idx % 2 === 0 ? 'bg-white hover:bg-slate-50' : 'bg-slate-50/50 hover:bg-slate-50';
@@ -975,8 +981,7 @@
                 let rowHTML = `<td class="p-3.5 font-bold text-slate-800">${c.title} <span class="text-xs text-slate-400 font-normal block font-mono">${c.filename}</span></td>`;
                 
                 allJurors.forEach(j => {
-                    const match = remoteVotes.find(v => v.username === j && v.costumeId === c.id);
-                    // Ellenőrizzük, hogy a summary érvényes szám-e és nem dátum string
+                    const match = activeVotes.find(v => v.username === j && v.costumeId === c.id);
                     const score = match ? parseFloat(match.summary) : NaN;
                     
                     if (!isNaN(score)) {
@@ -1077,17 +1082,27 @@
             juryFavContainer.innerHTML = '';
             const allJurors = [...new Set(remoteVotes.map(v => v.username))];
 
+            let latestVotesMap = {};
+            for (let i = remoteVotes.length - 1; i >= 0; i--) {
+                const v = remoteVotes[i];
+                if (!v.username || !v.costumeId) continue;
+                const key = v.username + '_' + v.costumeId;
+                if (!latestVotesMap[key]) latestVotesMap[key] = v;
+            }
+            let activeVotes = Object.values(latestVotesMap);
+
             if (allJurors.length === 0) {
                 juryFavContainer.innerHTML = '<p class="text-xs text-slate-400">Még nincsenek szavazatok.</p>';
             } else {
                 allJurors.forEach(j => {
-                    const userVotesList = remoteVotes.filter(v => v.username === j);
+                    const userVotesList = activeVotes.filter(v => v.username === j);
                     let maxScore = -1;
                     let favCostumeId = null;
 
                     userVotesList.forEach(v => {
-                        if (v.summary > maxScore) {
-                            maxScore = v.summary;
+                        const s = parseFloat(v.summary);
+                        if (s > maxScore) {
+                            maxScore = s;
                             favCostumeId = v.costumeId;
                         }
                     });
@@ -1095,7 +1110,7 @@
                     const costumeObj = COSTUMES.find(c => c.id === favCostumeId);
                     const div = document.createElement('div');
                     div.className = 'flex justify-between items-center text-xs bg-slate-50 p-2 rounded-lg border border-slate-100';
-                    div.innerHTML = `<span class="font-medium text-slate-700"><i class="fa-solid fa-user text-accentOrange mr-1"></i> ${j}:</span> <span class="font-bold text-corporateBlue">${costumeObj ? costumeObj.title : 'N/A'} (${maxScore} pt)</span>`;
+                    div.innerHTML = `<span class="font-medium text-slate-700"><i class="fa-solid fa-user text-accentOrange mr-1"></i> ${j}:</span> <span class="font-bold text-corporateBlue">${costumeObj ? costumeObj.title : 'N/A'} (${maxScore.toFixed(1)} pt)</span>`;
                     juryFavContainer.appendChild(div);
                 });
             }
