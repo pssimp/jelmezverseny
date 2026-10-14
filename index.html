@@ -690,33 +690,42 @@
             const costume = COSTUMES.find(c => c.id === costumeId);
             if (!costume) return;
 
-            document.getElementById('detail-image').src = costume.image;
+            const imgEl = document.getElementById('detail-image');
+            imgEl.src = costume.image;
+            // Ha a kép nem található meg a megadott útvonalon, tartalék képet tölt be
+            imgEl.onerror = function() {
+                this.src = 'https://placehold.co/600x600/1E3A8A/FFFFFF?text=' + encodeURIComponent(costume.title);
+            };
+
             document.getElementById('detail-filename').textContent = costume.filename;
 
             // Megkeressük a felhasználó legutóbbi mentett szavazatát ehhez a jelmezhez
             let latestUserVote = null;
-            for (let i = remoteVotes.length - 1; i >= 0; i--) {
-                const v = remoteVotes[i];
-                if (v.username === currentUser && v.costumeId === costumeId) {
-                    latestUserVote = v;
-                    break;
+            if (Array.isArray(remoteVotes)) {
+                for (let i = remoteVotes.length - 1; i >= 0; i--) {
+                    const v = remoteVotes[i];
+                    if (v && v.username === currentUser && v.costumeId === costumeId) {
+                        latestUserVote = v;
+                        break;
+                    }
                 }
             }
 
-            // Ha van korábbi szavazat, betöltjük, ha nincs, alapértelmezett 5-öst adunk
+            // Biztonságos betöltés
             currentRatingState = {
-                uniqueness: latestUserVote ? Number(latestUserVote.uniqueness) || 5 : 5,
-                complexity: latestUserVote ? Number(latestUserVote.complexity) || 5 : 5,
-                creativity: latestUserVote ? Number(latestUserVote.creativity) || 5 : 5,
-                quality: latestUserVote ? Number(latestUserVote.quality) || 5 : 5,
-                entertainment: latestUserVote ? Number(latestUserVote.entertainment) || 5 : 5
+                uniqueness: (latestUserVote && !isNaN(Number(latestUserVote.uniqueness))) ? Number(latestUserVote.uniqueness) : 5,
+                complexity: (latestUserVote && !isNaN(Number(latestUserVote.complexity))) ? Number(latestUserVote.complexity) : 5,
+                creativity: (latestUserVote && !isNaN(Number(latestUserVote.creativity))) ? Number(latestUserVote.creativity) : 5,
+                quality: (latestUserVote && !isNaN(Number(latestUserVote.quality))) ? Number(latestUserVote.quality) : 5,
+                entertainment: (latestUserVote && !isNaN(Number(latestUserVote.entertainment))) ? Number(latestUserVote.entertainment) : 5
             };
 
             const container = document.getElementById('categories-container');
+            if (!container) return;
             container.innerHTML = '';
 
             CATEGories.forEach(cat => {
-                let val = currentRatingState[cat.id];
+                let val = currentRatingState[cat.id] || 5;
 
                 const div = document.createElement('div');
                 div.className = 'bg-slate-50 p-4 rounded-xl border border-slate-200';
