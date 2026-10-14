@@ -26,8 +26,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Inter', sans-serif; }
-        /* Velencei maszkos elegáns háttér minta */
-/* Elegáns lila álarcos háttér */
+        /* Elegáns lila álarcos háttér */
         .venetian-bg {
             background-color: #0d0b14;
             background-image: linear-gradient(rgba(13, 11, 20, 0.4), rgba(13, 11, 20, 0.4)), url('images/masquerade_bg.jpg');
@@ -41,11 +40,11 @@
         ::-webkit-scrollbar-track { background: #f1f1f1; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-        /* Animációk */
         @keyframes pulseScale {
             0% { transform: scale(1); }
             50% { transform: scale(0.97); opacity: 0.8; }
             100% { transform: scale(1); }
+        }
         .animate-click {
             animation: pulseScale 0.25s ease-in-out;
         }
@@ -93,7 +92,7 @@
                     <i class="fa-solid fa-id-badge"></i>
                 </div>
                 <h2 class="text-2xl font-bold text-corporateBlue mb-2">Üdvözöljük a Zsűriben!</h2>
-                <p class="text-sm text-slate-500 mb-6">Kérjük, adja meg a nevét a szavazás megkezdéséhez. A rendszer megjegyzi az Ön beállításait.</p>
+                <p class="text-sm text-slate-500 mb-6">Kérjük, adja meg a nevét a szavazás megkezdéséhez. A rendszer szinkronizál a központi táblázattal.</p>
                 
                 <form onsubmit="handleLogin(event)" class="space-y-4 text-left">
                     <div>
@@ -177,7 +176,7 @@
                     <div class="mt-8 pt-4 border-t border-slate-100 flex justify-between items-center">
                         <span id="save-status" class="text-xs text-emerald-600 font-medium flex items-center space-x-1 opacity-0 transition-opacity">
                             <i class="fa-solid fa-circle-check"></i>
-                            <span>Változások mentve</span>
+                            <span>Adatok elküldve a Google Táblázatba</span>
                         </span>
                         <button onclick="playBackSound(); router.navigate('home')" class="bg-corporateBlue hover:bg-blue-900 text-white font-semibold py-2.5 px-6 rounded-xl shadow transition">
                             Kész / Vissza
@@ -293,18 +292,13 @@
                         <i class="fa-solid fa-chart-line text-accentOrange"></i>
                         <span>Eredmények & Prezentációs Nézet</span>
                     </h2>
-                    <p class="text-sm text-slate-500">Hivatalos statisztikai összegző és zsűri prezentáció (4 diá)</p>
+                    <p class="text-sm text-slate-500">Központi Google Táblázat alapú statisztikai összegző (4 diá)</p>
                 </div>
                 <div class="flex items-center space-x-3">
-                    <button onclick="exportDataJSON()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3.5 py-2 rounded-xl text-xs font-semibold transition border border-slate-200 flex items-center space-x-1.5">
-                        <i class="fa-solid fa-download"></i>
-                        <span>Adatok Letöltése (JSON)</span>
+                    <button onclick="loadGoogleSheetData()" class="bg-corporateBlue hover:bg-blue-900 text-white px-4 py-2 rounded-xl text-xs font-semibold transition shadow flex items-center space-x-1.5">
+                        <i class="fa-solid fa-rotate"></i>
+                        <span>Adatok Frissítése</span>
                     </button>
-                    <label class="bg-corporateBlue hover:bg-blue-900 text-white px-3.5 py-2 rounded-xl text-xs font-semibold transition cursor-pointer flex items-center space-x-1.5 shadow">
-                        <i class="fa-solid fa-upload"></i>
-                        <span>Adatok Betöltése</span>
-                        <input type="file" id="import-file" accept=".json" onchange="importDataJSON(event)" class="hidden">
-                    </label>
                 </div>
             </div>
 
@@ -451,12 +445,15 @@
     </main>
 
     <!-- Footer -->
-    <footer class="bg-white/9sten backdrop-blur border-t border-slate-200 py-3 text-center text-xs text-slate-500">
-        Céges Jelmezverseny &bull; GitHub Pages Statikus Alkalmazás &bull; Minden jog fenntartva
+    <footer class="bg-white/95 backdrop-blur border-t border-slate-200 py-3 text-center text-xs text-slate-500">
+        Céges Jelmezverseny &bull; GitHub Pages & Google Sheets &bull; Minden jog fenntartva
     </footer>
 
     <!-- Application Script -->
     <script>
+        // IDE ÍRD BE A GOOGLE SCRIPT WEB APP URL CÍMET:
+        const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyp0gxqUFnDOKRlQztDssAkWD87imw686TC2Nih0misgouMH4uP1NSI52igXg08QC8u/exec';
+
         const COSTUMES = [
             { id: 'c1', filename: 'Fat_Me.png', title: 'Kövér Levi', image: 'images/Fat_Me.png' },
             { id: 'c2', filename: 'Budavari Viktoria.jpg', title: 'Viki', image: 'images/Budavari Viktoria.jpg' },
@@ -475,7 +472,7 @@
         ];
 
         let currentUser = localStorage.getItem('costume_contest_user') || null;
-        let votes = JSON.parse(localStorage.getItem('costume_contest_votes') || '{}'); 
+        let remoteVotes = []; // Google Sheets-ből letöltött szavazatok tömbje
         let currentCostumeId = null;
         let currentSlide = 1;
         let chartAvgInstance = null;
@@ -540,7 +537,7 @@
                         return;
                     }
                     document.getElementById('view-home').classList.remove('hidden');
-                    renderHomeGrid();
+                    loadGoogleSheetData(() => renderHomeGrid());
                 } else if (viewName === 'detail') {
                     if (!currentUser) {
                         document.getElementById('view-login').classList.remove('hidden');
@@ -552,8 +549,11 @@
                 } else if (viewName === 'guide') {
                     document.getElementById('view-guide').classList.remove('hidden');
                 } else if (viewName === 'presentation') {
-                    document.getElementById('view-presentation').classList.remove('hidden');
-                    renderPresentation();
+                    document.getElementById('view-presentation').classList.add('hidden'); // Ideiglenes rejtés betöltés alatt
+                    loadGoogleSheetData(() => {
+                        document.getElementById('view-presentation').classList.remove('hidden');
+                        renderPresentation();
+                    });
                 } else if (viewName === 'login') {
                     document.getElementById('view-login').classList.remove('hidden');
                 }
@@ -602,17 +602,43 @@
             }
         }
 
+        // Google Sheets adatok lekérdezése
+        function loadGoogleSheetData(callback) {
+            if (GOOGLE_SCRIPT_URL.includes('IDE_ILLESZD')) {
+                if(callback) callback();
+                return;
+            }
+            fetch(GOOGLE_SCRIPT_URL)
+                .then(response => response.json())
+                .then(data => {
+                    remoteVotes = data;
+                    if(callback) callback();
+                })
+                .catch(err => {
+                    console.error('Hiba a Google Sheets adatok olvasásakor:', err);
+                    if(callback) callback();
+                });
+        }
+
         function renderHomeGrid() {
             const grid = document.getElementById('costumes-grid');
             grid.innerHTML = '';
 
-            const userVotes = votes[currentUser] || {};
             let ratedCount = 0;
 
             COSTUMES.forEach(c => {
-                const costumeVotes = userVotes[c.id] || {};
-                const isRated = CATEGories.every(cat => costumeVotes[cat.id] !== undefined);
+                // Ellenőrizzük, hogy az aktuális felhasználó értékelte-e már ezt a jelmezt
+                const userVotedCategories = remoteVotes.filter(v => v.username === currentUser && v.costumeId === c.id);
+                const isRated = userVotedCategories.length >= CATEGories.length;
                 if (isRated) ratedCount++;
+
+                // Kiszámoljuk az átlagos pontot ehhez a jelmezhez az adott felhasználónál
+                let userSummary = '5.0';
+                if (isRated) {
+                    let sum = 0;
+                    userVotedCategories.forEach(v => sum += v.summary);
+                    userSummary = (sum / userVotedCategories.length).toFixed(1);
+                }
 
                 const card = document.createElement('div');
                 card.className = `bg-white rounded-2xl overflow-hidden shadow-sm border-2 transition duration-200 hover:shadow-md cursor-pointer flex flex-col justify-between ${isRated ? 'border-emerald-500 ring-2 ring-emerald-100' : 'border-slate-200 hover:border-corporateBlue'}`;
@@ -636,7 +662,7 @@
                             <p class="text-xs font-mono text-slate-400">${c.filename}</p>
                         </div>
                         <div class="mt-4 pt-3 border-t border-slate-100 flex justify-between items-center text-xs font-semibold">
-                            <span class="${isRated ? 'text-emerald-600' : 'text-slate-500'}">${isRated ? 'Értékelve (' + (userVotes[c.id].summary || '5.0') + ' pt)' : 'Még nem értékelt'}</span>
+                            <span class="${isRated ? 'text-emerald-600' : 'text-slate-500'}">${isRated ? 'Értékelve (' + userSummary + ' pt)' : 'Még nem értékelt'}</span>
                             <span class="text-corporateBlue flex items-center space-x-1"><span>Pontozás</span> <i class="fa-solid fa-arrow-right text-[10px]"></i></span>
                         </div>
                     </div>
@@ -658,20 +684,26 @@
             const container = document.getElementById('categories-container');
             container.innerHTML = '';
 
-            if (!votes[currentUser]) votes[currentUser] = {};
-            if (!votes[currentUser][costumeId]) votes[currentUser][costumeId] = {};
-
-            const costumeVotes = votes[currentUser][costumeId];
-
-            CATEGories.forEach(cat => {
-                if (costumeVotes[cat.id] === undefined) {
-                    costumeVotes[cat.id] = 5;
+            // Megkeressük a felhasználó eddigi szavazatait ehhez a jelmezhez
+            const userCostumeVotes = {};
+            remoteVotes.forEach(v => {
+                if (v.username === currentUser && v.costumeId === costumeId) {
+                    // Melyik kategória? A Google Sheet-be külön soronként mentünk
                 }
             });
-            updateSummaryAndStorage(costumeId);
 
             CATEGories.forEach(cat => {
-                const val = costumeVotes[cat.id];
+                // Alapértelmezett 5, ha még nem szavazott
+                let val = 5;
+                const existing = remoteVotes.find(v => v.username === currentUser && v.costumeId === costumeId);
+                // Egyszerűsítve: lekérdezzük az adott kategória értékét
+                const specificVote = remoteVotes.find(v => v.username === currentUser && v.costumeId === costumeId);
+                // Mivel minden kategória külön rögzül, keressük meg a táblázatból:
+                const matchedCatVote = remoteVotes.find(v => v.username === currentUser && v.costumeId === costumeId && v.category === cat.id);
+                
+                // Ha mátrixból nézzük:
+                // A Google Apps Script minden kategóriát külön beírhat, vagy egységbe menthet. 
+                // A legegyszerűbb, ha a felhasználó kattintáskor elküldi az összes kategóriát vagy az aktuálisat.
 
                 const div = document.createElement('div');
                 div.className = 'bg-slate-50 p-4 rounded-xl border border-slate-200';
@@ -683,7 +715,7 @@
                         <label class="flex flex-col items-center cursor-pointer group">
                             <span class="text-xs font-semibold text-slate-500 mb-1 group-hover:text-corporateBlue">${i}</span>
                             <input type="radio" name="cat-${cat.id}" value="${i}" ${isChecked}
-                                onchange="playClickSound(); updateScore('${costumeId}', '${cat.id}', ${i})"
+                                onchange="playClickSound(); updateAndSendScore('${costumeId}', '${cat.id}', ${i})"
                                 class="w-4 h-4 text-accentOrange accent-accentOrange cursor-pointer">
                         </label>
                     `;
@@ -702,31 +734,48 @@
             });
         }
 
-        function updateScore(costumeId, categoryId, value) {
+        // Értékelés mentése és elküldése a Google Sheets-be
+        let currentRatingState = { uniqueness: 5, complexity: 5, creativity: 5, quality: 5, entertainment: 5 };
+
+        function updateAndSendScore(costumeId, categoryId, value) {
             let numVal = parseInt(value, 10);
             if (isNaN(numVal)) numVal = 1;
 
             const labelEl = document.getElementById(`val-label-${categoryId}`);
             if (labelEl) labelEl.textContent = numVal;
 
-            if (!votes[currentUser]) votes[currentUser] = {};
-            if (!votes[currentUser][costumeId]) votes[currentUser][costumeId] = {};
-            
-            votes[currentUser][costumeId][categoryId] = numVal;
-            updateSummaryAndStorage(costumeId);
+            currentRatingState[categoryId] = numVal;
 
-            const status = document.getElementById('save-status');
-            status.style.opacity = '1';
-            setTimeout(() => { status.style.opacity = '0'; }, 1500);
-        }
-
-        function updateSummaryAndStorage(costumeId) {
+            // Szumma számítás
             let sum = 0;
-            CATEGories.forEach(cat => {
-                sum += (votes[currentUser][costumeId][cat.id] || 5);
-            });
-            votes[currentUser][costumeId].summary = (sum / CATEGories.length).toFixed(1);
-            localStorage.setItem('costume_contest_votes', JSON.stringify(votes));
+            let count = 0;
+            Object.values(currentRatingState).forEach(v => { sum += v; count++; });
+            let summaryAvg = (sum / count).toFixed(1);
+
+            // Adatok küldése a Google Sheets-nek
+            if (!GOOGLE_SCRIPT_URL.includes('IDE_ILLESZD')) {
+                const payload = {
+                    username: currentUser,
+                    costumeId: costumeId,
+                    uniqueness: currentRatingState.uniqueness,
+                    complexity: currentRatingState.complexity,
+                    creativity: currentRatingState.creativity,
+                    quality: currentRatingState.quality,
+                    entertainment: currentRatingState.entertainment,
+                    summary: summaryAvg
+                };
+
+                fetch(GOOGLE_SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                }).then(() => {
+                    const status = document.getElementById('save-status');
+                    status.style.opacity = '1';
+                    setTimeout(() => { status.style.opacity = '0'; }, 1500);
+                });
+            }
         }
 
         function goToSlide(slideNum) {
@@ -787,20 +836,25 @@
                 };
             });
 
-            Object.keys(votes).forEach(username => {
-                const userCostumes = votes[username];
-                Object.keys(userCostumes).forEach(cId => {
-                    if (!costumeStats[cId]) return;
-                    const catScores = userCostumes[cId];
-                    costumeStats[cId].juryScores[username] = catScores;
+            // Feldolgozzuk a remoteVotes tömböt
+            remoteVotes.forEach(v => {
+                const cId = v.costumeId;
+                const username = v.username;
+                if (!costumeStats[cId]) return;
 
-                    CATEGories.forEach(cat => {
-                        if (catScores[cat.id] !== undefined) {
-                            costumeStats[cId].totals[cat.id] += catScores[cat.id];
-                            costumeStats[cId].counts[cat.id] += 1;
-                        }
-                    });
-                });
+                costumeStats[cId].juryScores[username] = v.summary;
+
+                costumeStats[cId].totals.uniqueness += v.uniqueness;
+                costumeStats[cId].totals.complexity += v.complexity;
+                costumeStats[cId].totals.creativity += v.creativity;
+                costumeStats[cId].totals.quality += v.quality;
+                costumeStats[cId].totals.entertainment += v.entertainment;
+
+                costumeStats[cId].counts.uniqueness += 1;
+                costumeStats[cId].counts.complexity += 1;
+                costumeStats[cId].counts.creativity += 1;
+                costumeStats[cId].counts.quality += 1;
+                costumeStats[cId].counts.entertainment += 1;
             });
 
             let results = [];
@@ -865,7 +919,7 @@
             headerTr.innerHTML = '';
             tbody.innerHTML = '';
 
-            const allJurors = Object.keys(votes);
+            const allJurors = [...new Set(remoteVotes.map(v => v.username))];
 
             let headerHTML = '<th class="p-3.5">Jelmez</th>';
             allJurors.forEach(j => {
@@ -883,9 +937,9 @@
                 let rowHTML = `<td class="p-3.5 font-bold text-slate-800">${c.title} <span class="text-xs text-slate-400 font-normal block font-mono">${c.filename}</span></td>`;
                 
                 allJurors.forEach(j => {
-                    const userCostumeVote = votes[j] && votes[j][c.id];
-                    if (userCostumeVote && userCostumeVote.summary) {
-                        rowHTML += `<td class="p-3.5 text-center font-semibold text-corporateBlue">${userCostumeVote.summary} pt</td>`;
+                    const match = remoteVotes.find(v => v.username === j && v.costumeId === c.id);
+                    if (match && match.summary) {
+                        rowHTML += `<td class="p-3.5 text-center font-semibold text-corporateBlue">${match.summary} pt</td>`;
                     } else {
                         rowHTML += `<td class="p-3.5 text-center text-slate-300">-</td>`;
                     }
@@ -980,21 +1034,20 @@
 
             const juryFavContainer = document.getElementById('rank-jury-favorites');
             juryFavContainer.innerHTML = '';
-            const allJurors = Object.keys(votes);
+            const allJurors = [...new Set(remoteVotes.map(v => v.username))];
 
             if (allJurors.length === 0) {
                 juryFavContainer.innerHTML = '<p class="text-xs text-slate-400">Még nincsenek szavazatok.</p>';
             } else {
                 allJurors.forEach(j => {
-                    const userCostumes = votes[j];
+                    const userVotesList = remoteVotes.filter(v => v.username === j);
                     let maxScore = -1;
                     let favCostumeId = null;
 
-                    Object.keys(userCostumes).forEach(cId => {
-                        const summary = parseFloat(userCostumes[cId].summary || 0);
-                        if (summary > maxScore) {
-                            maxScore = summary;
-                            favCostumeId = cId;
+                    userVotesList.forEach(v => {
+                        if (v.summary > maxScore) {
+                            maxScore = v.summary;
+                            favCostumeId = v.costumeId;
                         }
                     });
 
@@ -1005,48 +1058,6 @@
                     juryFavContainer.appendChild(div);
                 });
             }
-        }
-
-        function exportDataJSON() {
-            playClickSound();
-            const dataToExport = {
-                votes: votes,
-                exportDate: new Date().toISOString()
-            };
-            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(dataToExport, null, 2));
-            const downloadAnchor = document.createElement('a');
-            downloadAnchor.setAttribute("href", dataStr);
-            downloadAnchor.setAttribute("download", `jelmezverseny_szavazatok_${new Date().toISOString().slice(0,10)}.json`);
-            document.body.appendChild(downloadAnchor);
-            downloadAnchor.click();
-            downloadAnchor.remove();
-        }
-
-        function importDataJSON(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                try {
-                    const parsed = JSON.parse(e.target.result);
-                    if (parsed.votes) {
-                        votes = parsed.votes;
-                        localStorage.setItem('costume_contest_votes', JSON.stringify(votes));
-                        playClickSound();
-                        alert('Szavazatok sikeresen betöltve!');
-                        if (!document.getElementById('view-home').classList.contains('hidden')) {
-                            renderHomeGrid();
-                        } else if (!document.getElementById('view-presentation').classList.contains('hidden')) {
-                            renderPresentation();
-                        }
-                    } else {
-                        alert('Érvénytelen fájlformátum.');
-                    }
-                } catch(err) {
-                    alert('Hiba a JSON fájl olvasásakor.');
-                }
-            };
-            reader.readAsText(file);
         }
     </script>
 </body>
