@@ -546,7 +546,7 @@
                     }
                     currentCostumeId = param;
                     document.getElementById('view-detail').classList.remove('hidden');
-                    renderDetailView(param); // <--- JAVÍTVA: Itt hívódik meg helyesen a renderDetailView
+                    (param); // <--- JAVÍTVA: Itt hívódik meg helyesen a 
                 } else if (viewName === 'guide') {
                     document.getElementById('view-guide').classList.remove('hidden');
                 } else if (viewName === 'presentation') {
@@ -692,7 +692,6 @@
 
             const imgEl = document.getElementById('detail-image');
             imgEl.src = costume.image;
-            // Ha a kép nem található meg a megadott útvonalon, tartalék képet tölt be
             imgEl.onerror = function() {
                 this.src = 'https://placehold.co/600x600/1E3A8A/FFFFFF?text=' + encodeURIComponent(costume.title);
             };
@@ -711,13 +710,13 @@
                 }
             }
 
-            // Biztonságos betöltés
+            // Biztonságos betöltés: támogatja mind az angol, mind a Google Sheets-ből jövő magyar oszlopneveket is!
             currentRatingState = {
-                uniqueness: (latestUserVote && !isNaN(Number(latestUserVote.uniqueness))) ? Number(latestUserVote.uniqueness) : 5,
-                complexity: (latestUserVote && !isNaN(Number(latestUserVote.complexity))) ? Number(latestUserVote.complexity) : 5,
-                creativity: (latestUserVote && !isNaN(Number(latestUserVote.creativity))) ? Number(latestUserVote.creativity) : 5,
-                quality: (latestUserVote && !isNaN(Number(latestUserVote.quality))) ? Number(latestUserVote.quality) : 5,
-                entertainment: (latestUserVote && !isNaN(Number(latestUserVote.entertainment))) ? Number(latestUserVote.entertainment) : 5
+                uniqueness: latestUserVote ? Number(latestUserVote.uniqueness || latestUserVote['Egyediség']) || 5 : 5,
+                complexity: latestUserVote ? Number(latestUserVote.complexity || latestUserVote['Komplexitás']) || 5 : 5,
+                creativity: latestUserVote ? Number(latestUserVote.creativity || latestUserVote['Kreativitás']) || 5 : 5,
+                quality: latestUserVote ? Number(latestUserVote.quality || latestUserVote['Kép Minőség']) || 5 : 5,
+                entertainment: latestUserVote ? Number(latestUserVote.entertainment || latestUserVote['Szórakoztató Érték']) || 5 : 5
             };
 
             const container = document.getElementById('categories-container');
