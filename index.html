@@ -179,8 +179,8 @@
                             <span>Adatok elküldve a Google Táblázatba</span>
                         </span>
                         <button onclick="saveAndReturn(currentCostumeId)" class="bg-corporateBlue hover:bg-blue-900 text-white font-semibold py-2.5 px-6 rounded-xl shadow transition">
-    Kész / Vissza
-</button>
+                            Kész / Vissza
+                        </button>
                     </div>
                 </div>
             </div>
@@ -546,7 +546,7 @@
                     }
                     currentCostumeId = param;
                     document.getElementById('view-detail').classList.remove('hidden');
-                    (param);
+                    renderDetailView(param); // <--- JAVÍTVA: Itt hívódik meg helyesen a renderDetailView
                 } else if (viewName === 'guide') {
                     document.getElementById('view-guide').classList.remove('hidden');
                 } else if (viewName === 'presentation') {
@@ -758,7 +758,7 @@
         }
 
         function saveAndReturn(costumeId) {
-            // Biztonságos kategória-értékek (ha valamiért ki lenne hagyva, 5-ös alappal számol)
+            // Biztonságos kategória-értékek
             const u = Number(currentRatingState.uniqueness) || 5;
             const comp = Number(currentRatingState.complexity) || 5;
             const cr = Number(currentRatingState.creativity) || 5;
