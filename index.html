@@ -858,19 +858,35 @@
                 };
             });
 
-            // Feldolgozzuk a remoteVotes tömböt
-            remoteVotes.forEach(v => {
+            // 1. Lépés: Kiszűrjük, hogy minden zsűritagnál jelmezenként csak a LEGUTOLSÓ értékelés számítson
+            // Mivel a remoteVotes tömbben a sorrend olyan, ahogy a sorok beérkeztek a táblázatba, 
+            // ha hátulról (a legfrissebbtől) haladunk előre, az első találat lesz a legutolsó módosítás.
+            let latestVotesMap = {};
+            for (let i = remoteVotes.length - 1; i >= 0; i--) {
+                const v = remoteVotes[i];
+                if (!v.username || !v.costumeId) continue;
+                
+                const key = v.username + '_' + v.costumeId;
+                if (!latestVotesMap[key]) {
+                    latestVotesMap[key] = v; // Csak a legfrissebb mentést rögzítjük
+                }
+            }
+
+            let uniqueLatestVotes = Object.values(latestVotesMap);
+
+            // 2. Lépés: A legfrissebb szavazatok aggregálása a statisztikákhoz és grafikonokhoz
+            uniqueLatestVotes.forEach(v => {
                 const cId = v.costumeId;
                 const username = v.username;
                 if (!costumeStats[cId]) return;
 
                 costumeStats[cId].juryScores[username] = v.summary;
 
-                costumeStats[cId].totals.uniqueness += v.uniqueness;
-                costumeStats[cId].totals.complexity += v.complexity;
-                costumeStats[cId].totals.creativity += v.creativity;
-                costumeStats[cId].totals.quality += v.quality;
-                costumeStats[cId].totals.entertainment += v.entertainment;
+                costumeStats[cId].totals.uniqueness += Number(v.uniqueness) || 5;
+                costumeStats[cId].totals.complexity += Number(v.complexity) || 5;
+                costumeStats[cId].totals.creativity += Number(v.creativity) || 5;
+                costumeStats[cId].totals.quality += Number(v.quality) || 5;
+                costumeStats[cId].totals.entertainment += Number(v.entertainment) || 5;
 
                 costumeStats[cId].counts.uniqueness += 1;
                 costumeStats[cId].counts.complexity += 1;
