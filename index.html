@@ -452,7 +452,7 @@
     <!-- Application Script -->
     <script>
         // IDE ÍRD BE A GOOGLE SCRIPT WEB APP URL CÍMET:
-        const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyp0gxqUFnDOKRlQztDssAkWD87imw686TC2Nih0misgouMH4uP1NSI52igXg08QC8u/exec';
+        const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzitqpL9ODo_QdvSqt-uoKy4RjWg5AAfqNuIvjOw7-w_hVSi69aWAGMjbnBQMV70o5Q/exec';
 
         const COSTUMES = [
             { id: 'c1', filename: 'Fat_Me.png', title: 'Kövér Levi', image: 'images/Fat_Me.png' },
@@ -627,17 +627,26 @@
             let ratedCount = 0;
 
             COSTUMES.forEach(c => {
-                // Ellenőrizzük, hogy az aktuális felhasználó értékelte-e már ezt a jelmezt
-                const userVotedCategories = remoteVotes.filter(v => v.username === currentUser && v.costumeId === c.id);
-                const isRated = userVotedCategories.length >= CATEGories.length;
+                // Megkeressük az aktuális felhasználó szavazatait ehhez a jelmezhez
+                const userVotesList = remoteVotes.filter(v => v.username === currentUser && v.costumeId === c.id);
+                const isRated = userVotesList.length > 0;
                 if (isRated) ratedCount++;
 
-                // Kiszámoljuk az átlagos pontot ehhez a jelmezhez az adott felhasználónál
+                // Kiszámoljuk a pontos átlagot, biztonságos parseFloat konverzióval
                 let userSummary = '5.0';
                 if (isRated) {
                     let sum = 0;
-                    userVotedCategories.forEach(v => sum += v.summary);
-                    userSummary = (sum / userVotedCategories.length).toFixed(1);
+                    let validCount = 0;
+                    userVotesList.forEach(v => {
+                        const val = parseFloat(v.summary);
+                        if (!isNaN(val)) {
+                            sum += val;
+                            validCount++;
+                        }
+                    });
+                    if (validCount > 0) {
+                        userSummary = (sum / validCount).toFixed(1);
+                    }
                 }
 
                 const card = document.createElement('div');
@@ -746,25 +755,36 @@
 
             currentRatingState[categoryId] = numVal;
 
-            // Szumma számítás
+            // Szumma átlag számítása
             let sum = 0;
             let count = 0;
-            Object.values(currentRatingState).forEach(v => { sum += v; count++; });
-            let summaryAvg = (sum / count).toFixed(1);
+            Object.values(currentRatingState).forEach(v => { 
+                const n = parseFloat(v);
+                if (!isNaN(n)) { sum += n; count++; }
+            });
+            let summaryAvg = count > 0 ? (sum / count).toFixed(1) : "5.0";
 
-            // Adatok küldése a Google Sheets-nek
+            const payload = {
+                username: currentUser,
+                costumeId: costumeId,
+                uniqueness: currentRatingState.uniqueness,
+                complexity: currentRatingState.complexity,
+                creativity: currentRatingState.creativity,
+                quality: currentRatingState.quality,
+                entertainment: currentRatingState.entertainment,
+                summary: parseFloat(summaryAvg)
+            };
+
+            // Helyi memóriában lévő tömb frissítése azonnal
+            const existingIdx = remoteVotes.findIndex(v => v.username === currentUser && v.costumeId === costumeId);
+            if (existingIdx >= 0) {
+                remoteVotes[existingIdx] = payload;
+            } else {
+                remoteVotes.push(payload);
+            }
+
+            // Küldés a Google Sheets-be
             if (!GOOGLE_SCRIPT_URL.includes('IDE_ILLESZD')) {
-                const payload = {
-                    username: currentUser,
-                    costumeId: costumeId,
-                    uniqueness: currentRatingState.uniqueness,
-                    complexity: currentRatingState.complexity,
-                    creativity: currentRatingState.creativity,
-                    quality: currentRatingState.quality,
-                    entertainment: currentRatingState.entertainment,
-                    summary: summaryAvg
-                };
-
                 fetch(GOOGLE_SCRIPT_URL, {
                     method: 'POST',
                     mode: 'no-cors',
@@ -772,8 +792,10 @@
                     body: JSON.stringify(payload)
                 }).then(() => {
                     const status = document.getElementById('save-status');
-                    status.style.opacity = '1';
-                    setTimeout(() => { status.style.opacity = '0'; }, 1500);
+                    if (status) {
+                        status.style.opacity = '1';
+                        setTimeout(() => { status.style.opacity = '0'; }, 1500);
+                    }
                 });
             }
         }
@@ -938,8 +960,11 @@
                 
                 allJurors.forEach(j => {
                     const match = remoteVotes.find(v => v.username === j && v.costumeId === c.id);
-                    if (match && match.summary) {
-                        rowHTML += `<td class="p-3.5 text-center font-semibold text-corporateBlue">${match.summary} pt</td>`;
+                    // Ellenőrizzük, hogy a summary érvényes szám-e és nem dátum string
+                    const score = match ? parseFloat(match.summary) : NaN;
+                    
+                    if (!isNaN(score)) {
+                        rowHTML += `<td class="p-3.5 text-center font-semibold text-corporateBlue">${score.toFixed(1)} pt</td>`;
                     } else {
                         rowHTML += `<td class="p-3.5 text-center text-slate-300">-</td>`;
                     }
