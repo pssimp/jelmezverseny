@@ -693,7 +693,7 @@
             document.getElementById('detail-image').src = costume.image;
             document.getElementById('detail-filename').textContent = costume.filename;
 
-            // Megkeressük a felhasználó legutóbbi mentett szavazatát ehhez a jelmezhez (ha van)
+            // Megkeressük a felhasználó legutóbbi mentett szavazatát ehhez a jelmezhez
             let latestUserVote = null;
             for (let i = remoteVotes.length - 1; i >= 0; i--) {
                 const v = remoteVotes[i];
@@ -703,13 +703,13 @@
                 }
             }
 
-            // Betöltjük a state-be a meglévő értéket, vagy alapértelmezett 5-ösöket adunk
+            // Ha van korábbi szavazat, betöltjük, ha nincs, null értéket adunk
             currentRatingState = {
-                uniqueness: latestUserVote ? Number(latestUserVote.uniqueness) || 5 : 5,
-                complexity: latestUserVote ? Number(latestUserVote.complexity) || 5 : 5,
-                creativity: latestUserVote ? Number(latestUserVote.creativity) || 5 : 5,
-                quality: latestUserVote ? Number(latestUserVote.quality) || 5 : 5,
-                entertainment: latestUserVote ? Number(latestUserVote.entertainment) || 5 : 5
+                uniqueness: latestUserVote ? Number(latestUserVote.uniqueness) || null : null,
+                complexity: latestUserVote ? Number(latestUserVote.complexity) || null : null,
+                creativity: latestUserVote ? Number(latestUserVote.creativity) || null : null,
+                quality: latestUserVote ? Number(latestUserVote.quality) || null : null,
+                entertainment: latestUserVote ? Number(latestUserVote.entertainment) || null : null
             };
 
             const container = document.getElementById('categories-container');
@@ -737,7 +737,7 @@
                 div.innerHTML = `
                     <div class="flex justify-between items-center mb-3">
                         <label class="font-semibold text-sm text-corporateBlue">${cat.name}</label>
-                        <span class="text-xs font-bold bg-blue-50 text-corporateBlue px-2.5 py-1 rounded-lg border border-blue-100">Kiválasztva: <span id="val-label-${cat.id}">${val}</span>/10</span>
+                        <span class="text-xs font-bold bg-blue-50 text-corporateBlue px-2.5 py-1 rounded-lg border border-blue-100">Kiválasztva: <span id="val-label-${cat.id}">${val !== null ? val : '-'}</span>/10</span>
                     </div>
                     <div class="flex justify-between items-center bg-white p-3 rounded-xl border border-slate-200 gap-1">
                         ${radioButtonsHTML}
@@ -747,10 +747,9 @@
             });
         }
 
-        // Csak helyben frissít (mentés nélkül kattintgatás közben)
         function updateScoreLocally(categoryId, value) {
             let numVal = parseInt(value, 10);
-            if (isNaN(numVal)) numVal = 1;
+            if (isNaN(numVal)) return;
 
             const labelEl = document.getElementById(`val-label-${categoryId}`);
             if (labelEl) labelEl.textContent = numVal;
@@ -758,18 +757,21 @@
             currentRatingState[categoryId] = numVal;
         }
 
-        // Akkor küldi el a Google Sheets-be, amikor a Kész / Vissza gombra kattintanak
         function saveAndReturn(costumeId) {
+            // Ellenőrizzük, hogy minden kategória ki van-e töltve
+            const missingCats = CATEGories.filter(cat => currentRatingState[cat.id] === null);
+            
+            if (missingCats.length > 0) {
+                alert('Kérjük, értékelje az összes kategóriát a mentés előtt!');
+                return;
+            }
+
+            // Pontos átlag számítása kizárólag a megadott pontokból
             let sum = 0;
-            let count = 0;
-            Object.keys(currentRatingState).forEach(key => {
-                const n = parseFloat(currentRatingState[key]);
-                if (!isNaN(n)) {
-                    sum += n;
-                    count++;
-                }
+            CATEGories.forEach(cat => {
+                sum += currentRatingState[cat.id];
             });
-            let summaryAvg = count > 0 ? (sum / count).toFixed(1) : "5.0";
+            let summaryAvg = (sum / CATEGories.length).toFixed(1);
 
             const payload = {
                 username: currentUser,
@@ -782,7 +784,7 @@
                 summary: parseFloat(summaryAvg)
             };
 
-            // Helyi memóriába felvesszük az új értékelést
+            // Frissítjük a helyi memóriát
             remoteVotes.push(payload);
 
             // Küldés a Google Sheets-nek
